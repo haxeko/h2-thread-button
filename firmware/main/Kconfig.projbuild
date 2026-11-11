@@ -218,7 +218,8 @@ menu "Battery"
         range 1 5
         default 1
         help
-            ADC1 pin (GPIO1..GPIO5 on ESP32-H2) fed from VBAT through 1 MOhm, 100 nF to GND.
+            ADC1 pin (GPIO1..GPIO5 on ESP32-H2) fed from VBAT through 1 MOhm, 100 nF to GND: GPIO1 (module pin 27)
+            on module-cr2450 and module-cr123a, GPIO4 (pin 3, sdkconfig.defaults.cr123a_mini) on module-cr123a-mini.
 
     config BATTERY_SENSE_RATIO_X1000
         int "VBAT / pin voltage ratio x 1000"
@@ -386,7 +387,8 @@ menu "Status LED"
         range -1 27
         default 22
         help
-            GPIO22 (module pin 15) is a digital IO with no strapping function and no reset pull.
+            GPIO22 (module pin 15) is a digital IO with no strapping function and no reset pull. module-cr123a-mini:
+            GPIO11 (pin 6, sdkconfig.defaults.cr123a_mini).
 
     config STATUS_LED_ACTIVE_LEVEL
         int "Level that lights the LED"

@@ -1,6 +1,6 @@
 # Checklist kiểm thử: nút Matter over Thread chạy pin (CR2450 / CR123A)
 
-Áp dụng cho cả hai bo ([`hardware/module-cr2450`](../hardware/module-cr2450/README.md), [`hardware/module-cr123a`](../hardware/module-cr123a/README.md)) theo [README](../README.md) mục 3 và firmware bản phát hành khớp bo (mặc định SIT hoặc `lit`; bo CR123A thêm `sdkconfig.defaults.cr123a`). Mục O chỉ cho bo CR123A. **Không đo dòng với bản debug** (bản debug không Light-sleep). Ghi kết quả vào cột cuối; các số [AS] trong `tools/battery_model.py` được thay bằng số đo ở mục F, G.
+Áp dụng cho mọi bo ([`hardware/module-cr2450`](../hardware/module-cr2450/README.md), [`hardware/module-cr123a`](../hardware/module-cr123a/README.md), [`hardware/module-cr123a-mini`](../hardware/module-cr123a-mini/README.md)) theo [README](../README.md) mục 3 và firmware bản phát hành khớp bo (mặc định SIT hoặc `lit`; bo CR123A thêm `sdkconfig.defaults.cr123a`, bo mini `sdkconfig.defaults.cr123a_mini`). Mục O cho hai bo CR123A, mục P chỉ cho bo mini (đo dòng ở dây BAT+ thay cho JP1/JP2). **Không đo dòng với bản debug** (bản debug không Light-sleep). Ghi kết quả vào cột cuối; các số [AS] trong `tools/battery_model.py` được thay bằng số đo ở mục F, G.
 
 Log: UART0 115200 baud (TP3/TP4). Các dòng log được nhắc tới: `id_diag` (danh tính, Thread, parent RSSI, subscription), `power` (công suất phát, tạm dừng Thread, LIT/SIT), `battery` (áp pin, mức pin), `switch` (cử chỉ).
 
@@ -217,3 +217,18 @@ Bản phát hành, 2 controller (Apple + HA), ~20 lần nhấn/ngày (bằng tay
 | O4 | RSSI/LQI của parent so với bo CR2450 ở cùng vị trí | không kém hơn | |
 | O5 | Sụt áp TP9 khi re-attach (2 s RX) với pin mới và giả lập I-f | ≤ 0,1 V (pin mới); không brownout ở I-f | |
 | O6 | Pin sạc RCR123A 3,7 V (không được dùng): chỉ thử để biết hậu quả, nguồn có giới hạn dòng | mạch chạy, `BatVoltage` đứng ở ~3,3 V (ADC bão hoà); ghi lại để cảnh báo người dùng | |
+
+## P. Riêng bo CR123A mini (`hardware/module-cr123a-mini`, firmware `sdkconfig.defaults.cr123a_mini`)
+
+Áp dụng thêm mục O (trừ O1: không có đế pin). Bo không có JP1/JP2: đo dòng pin bằng ampe kế nối tiếp dây BAT+ (tháo dây khỏi pad, nối ampe kế vào giữa). Không có pad test VBAT, VBAT_SENSE: đo ở C1 và C9.
+
+| # | Bước | Đạt khi | Kết quả |
+|---|---|---|---|
+| P1 | Hàn dây từ tiếp điểm của vỏ: + vào pad BAT+ (đầu trái mặt dưới), − vào pad BAT− (đầu phải); lắp pin đúng chiều | khởi động, log `battery` có áp pin | |
+| P2 | Lắp ngược pin 10 s | không chạy, Q1 và pin không ấm, dòng ≤ 1 µA | |
+| P3 | Log khởi động / Basic Information | `HardwareVersionString` "ESP32-H2-WROOM-02C CR123A mini v1.0"; LED (GPIO11) nháy khi mở cửa sổ ghép nối | |
+| P4 | Áp pin báo (`BatVoltage`) so với đồng hồ đo ở C1, pin nghỉ | lệch ≤ 30 mV (đo pin qua GPIO4 / ADC1_CH3) | |
+| P5 | Dòng Deep-sleep (chưa ghép nối, hết cửa sổ ghép nối) ở dây BAT+ | như bo khác ± 3 µA (nếu cao hơn: điện trở kéo mặc định của GPIO4 qua R9 hoặc của GPIO11 qua LED) | |
+| P6 | Dòng Light-sleep đã ghép nối, LED tắt | như bo khác (mục F) | |
+| P7 | Lót cách điện giữa bo và pin; đóng vỏ | không chạm pad hở, nút bấm được | |
+| P8 | RSSI/LQI của parent khi đã đóng vỏ, pin ở vị trí cuối cùng | không kém bo `module-cr123a` quá 3 dB | |

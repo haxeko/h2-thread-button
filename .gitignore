@@ -10,5 +10,6 @@ sdkconfig.factory
 sdkconfig.lit
 sdkconfig.pmdiag
 sdkconfig.cr123a
+sdkconfig.cr123a_mini
 sdkconfig.*.old
 __pycache__/

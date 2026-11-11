@@ -34,8 +34,8 @@ CELLS = {
     # coin cell: R_int climbs to ~20 ohm well before the end (as the CR2032 of the former board: ~80 % usable)
     "CR2450": (620.0, 0.80, 2.85, 0.01, "module-cr2450", "[DS] Energizer CR2450 620 mAh, plateau ~2.9 V; [AS] usable"),
     # bobbin cell, pulse capable (R_int well under 1 ohm for most of its life): ~90 % usable
-    "CR123A": (1500.0, 0.90, 2.90, 0.01, "module-cr123a", "[DS] Li-MnO2 1500 mAh class (Panasonic, Energizer); "
-               "[AS] usable"),
+    "CR123A": (1500.0, 0.90, 2.90, 0.01, "module-cr123a, module-cr123a-mini",
+               "[DS] Li-MnO2 1500 mAh class (Panasonic, Energizer); [AS] usable"),
 }
 CELL = "CR2450"       # the cell of the tables; --cell picks another one
 CAP_MAH, USABLE, V_BAT, SELF_DISCHARGE = CELLS[CELL][:4]
@@ -73,7 +73,7 @@ REPORTS_PER_PRESS = 3   # [AS]
 #   (name, capacity mAh, usable fraction, mean voltage under load V, self-discharge per year, source tags)
 ALTERNATIVES = [
     ("CR2450 (bo module-cr2450)", *CELLS["CR2450"][:4], CELLS["CR2450"][5]),
-    ("CR123A (bo module-cr123a)", *CELLS["CR123A"][:4], CELLS["CR123A"][5]),
+    ("CR123A (bo module-cr123a, module-cr123a-mini)", *CELLS["CR123A"][:4], CELLS["CR123A"][5]),
     ("CR2032 (bo cũ, đã bỏ)", 220.0, 0.80, 2.85, 0.01, "[DS] Energizer/Panasonic, [AS] usable"),
     ("2 x AAA alkaline (không có bo)", 1150.0, 0.90, 2.50, 0.03,
      "[DS] ~1150 mAh/cell at low drain, [AS] usable to 0.85 V/cell"),

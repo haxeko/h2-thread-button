@@ -1,0 +1,12 @@
+# Board hardware/module-cr123a-mini: one CR123A in the enclosure (wired to the BAT+ / BAT- pads), 34.5 x 14.8 mm board.
+# Same cell as module-cr123a; the LED and the battery sense are on other GPIOs (every pin in use is on the left side
+# of the module, the board has no room below it). Add it after sdkconfig.defaults and the feature variants, e.g.
+#   idf.py -B build-cr123a_mini -D IDF_TARGET=esp32h2 -D SDKCONFIG=sdkconfig.cr123a_mini \
+#     -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.cr123a_mini" build
+#   LIT:  SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.lit;sdkconfig.defaults.cr123a_mini"
+CONFIG_BATTERY_CR123A=y
+# R9 1 MOhm from VBAT, C9 100 nF: GPIO4 = ADC1_CH3, module pin 3
+CONFIG_BATTERY_SENSE_GPIO=4
+# R8 1 kOhm + red LED to GND: GPIO11, module pin 6
+CONFIG_STATUS_LED_GPIO=11
+CONFIG_DEVICE_HARDWARE_VERSION_STRING="ESP32-H2-WROOM-02C CR123A mini v1.0"

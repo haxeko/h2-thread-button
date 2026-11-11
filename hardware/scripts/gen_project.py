@@ -254,11 +254,36 @@ def remove_blocks(text, match, heads):
             i = e + 1
 
 
+def pads_footprint(f):
+    """Footprint made of plain SMD pads only, e.g. the wire pads of a cell that sits in the enclosure:
+    f["pads"] = [(number, x, y, w, h), ...] (mm, no solder paste: soldered by hand), one courtyard rectangle around
+    each pad, f["outline"] = optional (x1, y1, x2, y2) rectangle on the fab layer (the cell, for the assembly
+    drawing)."""
+    n = f["name"]
+    o = [f"(footprint {q(n)}\n\t(version 20241229)\n\t(generator \"pcbnew\")\n\t(generator_version \"9.0\")\n"
+         "\t(layer \"F.Cu\")\n"
+         f"\t(descr {q(f['descr'])})\n",
+         fp_prop(n, "Reference", "REF**", 0, -3.5, "F.SilkS", hide=True),
+         fp_prop(n, "Value", n, 0, 3.5, "F.Fab", hide=True),
+         fp_prop(n, "Datasheet", "", 0, 0, "F.Fab", hide=True),
+         fp_prop(n, "Description", f["descr"], 0, 0, "F.Fab", hide=True),
+         "\t(attr smd exclude_from_pos_files exclude_from_bom)\n"]  # copper only: nothing to place
+    if f.get("outline"):
+        o.append(fp_rect(n, *f["outline"], "F.Fab", 0.1))
+    for number, x, y, w, h in f["pads"]:
+        m = 0.25  # courtyard margin
+        o.append(fp_rect(n + str(number), x - w / 2 - m, y - h / 2 - m, x + w / 2 + m, y + h / 2 + m, "F.CrtYd", 0.05))
+        o.append(smd(n, number, x, y, w, h, paste=False))
+    o.append("\t(embedded_fonts no)\n)\n")
+    return "".join(o)
+
+
 def write_footprints():
     d = os.path.join(HW, "lib", LIB + ".pretty")
     write(os.path.join(d, "ESP32-H2-WROOM-02C.kicad_mod"), module_footprint())
     for f in getattr(design, "CUSTOM_FOOTPRINTS", []):
-        write(os.path.join(d, f["name"] + ".kicad_mod"), holder_footprint(f))
+        text = pads_footprint(f) if "pads" in f else holder_footprint(f)
+        write(os.path.join(d, f["name"] + ".kicad_mod"), text)
 
 
 def write_tables():

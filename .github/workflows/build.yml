@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        board: [module-cr2450, module-cr123a]
+        board: [module-cr2450, module-cr123a, module-cr123a-mini]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,8 +48,9 @@ jobs:
       fail-fast: false
       matrix:
         # default: board module-cr2450, ICD SIT (every controller, Apple Home included);
-        # lit: ICD LIT + DSLS (sdkconfig.defaults.lit); cr123a: board module-cr123a (sdkconfig.defaults.cr123a)
-        variant: [default, lit, cr123a]
+        # lit: ICD LIT + DSLS (sdkconfig.defaults.lit); cr123a: board module-cr123a (sdkconfig.defaults.cr123a);
+        # cr123a_mini: board module-cr123a-mini (CR123A, LED GPIO11, battery sense GPIO4)
+        variant: [default, lit, cr123a, cr123a_mini]
     defaults:
       run:
         working-directory: firmware

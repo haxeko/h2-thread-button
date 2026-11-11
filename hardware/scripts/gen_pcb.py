@@ -265,9 +265,10 @@ def place():
     # silkscreen
     for text, x, y, layer, size, thick, angle in TEXTS_PCB:
         add_text(board, text, x, y, pcbnew.F_SilkS if layer == F else pcbnew.B_SilkS, size, thick, angle)
-    for ref, label in TP_LABEL.items():
+    for ref, label in TP_LABEL.items():  # "text" below the pad, or ("text", dx, dy)
+        text, dx, dy = label if isinstance(label, tuple) else (label, 0, 1.35)
         x, y, _, _ = PLACE[ref]
-        add_text(board, label, x, y + 1.35, pcbnew.B_SilkS, 0.6, 0.1)
+        add_text(board, text, x + dx, y + dy, pcbnew.B_SilkS, 0.6, 0.1)
 
     save(board)
     print("placed:", PCB)
