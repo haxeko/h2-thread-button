@@ -101,7 +101,7 @@ Chiều cao: module 3,2 mm trên bo 1,6 mm; chiều cao nút PTS810 và đế pi
 Cần KiCad 9 (`kicad-cli` và module Python `pcbnew`); Java 21 và [FreeRouting 2.1.0](https://github.com/freerouting/freerouting/releases) (`freerouting-2.1.0.jar`) chỉ cần khi sửa bố trí mà để lại kết nối chưa vẽ tay. Trên Windows chạy trong "KiCad 9.0 Command Prompt" (Python kèm KiCad có `pcbnew`): gõ `python` thay cho `python3`, và đặt biến bằng `set FREEROUTING_JAR=C:\đường\dẫn\freerouting-2.1.0.jar` trước lệnh `route`.
 
 ```bash
-cd ESP32-H2/matter-thread/matter-button-cr2032/hardware
+cd hardware
 python3 scripts/gen_project.py          # .kicad_pro (luật, net class), lib/, bảng thư viện
 python3 scripts/gen_sch.py              # .kicad_sch
 python3 scripts/gen_pcb.py place        # .kicad_pcb: viền bo, vị trí, đường vẽ tay, vùng cấm

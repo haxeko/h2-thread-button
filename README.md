@@ -4,7 +4,7 @@ Thiết kế đầy đủ (phần cứng, firmware, tính pin, kiểm thử) cho
 
 Firmware: ESP-IDF v6.0.2 + esp-matter release/v1.6.1 (cùng Docker image với các dự án khác trong repo). Cả 5 biến thể (mặc định SIT, LIT, `unique_setup`, `factory`, `debug`) đã build được, cùng bản `chip` cho bo không dùng module ([`hardware-chip/`](hardware-chip/README.md)); host test máy trạng thái nút qua 17 kịch bản. **Chưa đo trên bo thật**: mọi số đo đánh dấu [AS] phải được thay bằng số đo theo [checklist](docs/test-checklist.md).
 
-Cùng bo này làm **cảm biến cửa** (công tắc lưỡi gà hàn song song nút SW1, không dùng nút nữa): firmware riêng ở [`../matter-door-sensor`](../matter-door-sensor).
+Cùng bo này làm **cảm biến cửa** (công tắc lưỡi gà hàn song song nút SW1, không dùng nút nữa): firmware riêng ở [`matter-door-sensor`](https://github.com/haxeko/esp32-iot-project/tree/claude/matter-button-cr2032/ESP32-H2/matter-thread/matter-door-sensor) trong repo esp32-iot-project, nhánh `claude/matter-button-cr2032`.
 
 > **Kết luận nhanh**
 >
@@ -802,11 +802,11 @@ py -m pip install --upgrade "esptool>=5" pyserial
 ### 8.2 Build
 
 ```powershell
-git clone https://github.com/haxeko/esp32-iot-project.git
-cd esp32-iot-project
+git clone https://github.com/haxeko/h2-thread-button.git
+cd h2-thread-button
 $repo = git rev-parse --show-toplevel
 $img  = "espressif/esp-matter:release-v1.6.1_idf_v6.0.2"
-$proj = "/repo/ESP32-H2/matter-thread/matter-button-cr2032"
+$proj = "/repo"
 $pre  = "git config --global --add safe.directory /repo && cd $proj"
 
 # Bản mặc định: ICD SIT (Apple Home + Home Assistant)
@@ -909,16 +909,16 @@ Quy tắc:
 
 - **Không bao giờ chép NVS hay ảnh flash đầy đủ** (`read-flash` toàn bộ) từ bo này sang bo khác: sẽ trùng `UniqueID`, Extended Address, SRP host, fabric và khóa vận hành → hai nút tranh nhau một danh tính, chập chờn trên cả hai. Mỗi bo nạp firmware sạch (file đầy đủ ở `0x0` hoặc `erase-flash` trước), rồi ghép riêng.
 - Với bản mặc định (mã chung): **ghép từng bo một**, bo khác tắt nguồn (tháo pin) hoặc đã ghép xong. Kiểm tra đúng bo bằng Identify hoặc so `SerialNumber` với dòng `id_diag: dev serial=`.
-- Nhiều nút: dùng **`unique_setup`** (mã riêng, không cần công cụ) hoặc **`factory`** (DAC + mã riêng từ `ESP32-H2/tools/matter-mfg`, đã thêm loại `-t switch` cho device type 0x000F):
+- Nhiều nút: dùng **`unique_setup`** (mã riêng, không cần công cụ) hoặc **`factory`** (DAC + mã riêng từ `tools/matter-mfg`, đã thêm loại `-t switch` cho device type 0x000F):
 
   ```bash
-  T=…/ESP32-IoT-Project/ESP32-H2/tools/matter-mfg
+  T=…/h2-thread-button/tools/matter-mfg
   $T/in_docker.sh gen_pki.sh
   $T/in_docker.sh gen_factory_data.sh -t switch -n 5      # 5 bo: DAC, passcode, discriminator, QR riêng
   $T/flash_factory.sh COM5 factory/switch-*/fff1_8000/<uuid>/<uuid>-partition.bin   # 0x3E0000
   ```
 
-- **Chứng chỉ test và sản phẩm thật:** DAC/PAI test của SDK (VID 0xFFF1, PID 0x8000) chỉ dùng phát triển: Apple/Google cảnh báo "chưa chứng nhận". Sản phẩm thương mại cần VID riêng, PAI từ PAA được CSA tin cậy, CD thật sau chứng nhận, flash encryption để bảo vệ khóa DAC (xem `ESP32-H2/tools/matter-mfg/README.md`).
+- **Chứng chỉ test và sản phẩm thật:** DAC/PAI test của SDK (VID 0xFFF1, PID 0x8000) chỉ dùng phát triển: Apple/Google cảnh báo "chưa chứng nhận". Sản phẩm thương mại cần VID riêng, PAI từ PAA được CSA tin cậy, CD thật sau chứng nhận, flash encryption để bảo vệ khóa DAC (xem `tools/matter-mfg/README.md`).
 - Nhiều nút trên cùng một mạng Thread không xung đột: mỗi nút là một child riêng (router cha giữ tới 10+ child), địa chỉ và dịch vụ SRP riêng. So log `id_diag` giữa các bo: `efuse_mac`, `serial`, `unique_id`, `ext_addr`, `srp host` phải khác nhau; `ext_panid`, `partition` phải giống nhau.
 
 ---

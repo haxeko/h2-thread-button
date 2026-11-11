@@ -129,7 +129,7 @@ Ba thứ mà module đã được Espressif chỉnh sẵn, bản chip phải t�
 Cần KiCad 9 (`kicad-cli` và module Python `pcbnew`). Trên Windows chạy trong "KiCad 9.0 Command Prompt" (Python kèm KiCad có `pcbnew`), gõ `python` thay cho `python3`.
 
 ```bash
-cd ESP32-H2/matter-thread/matter-button-cr2032/hardware-chip
+cd hardware-chip
 python3 scripts/gen_project.py          # .kicad_pro (luật, net class), .kicad_dru, lib/, bảng thư viện
 python3 scripts/gen_sch.py              # .kicad_sch
 python3 scripts/gen_pcb.py all          # .kicad_pcb: viền bo, vị trí, đường mạch, vùng cấm, đồng GND, via khâu
