@@ -1,17 +1,24 @@
-# ESP32-H2 Matter over Thread: nút nhấn pin CR2032
+# ESP32-H2 Matter over Thread: nút nhấn chạy pin (CR2450 hoặc CR123A)
 
-Thiết kế đầy đủ (phần cứng, firmware, tính pin, kiểm thử) cho một **nút nhấn Matter over Thread chạy pin CR2032**: module **ESP32-H2-WROOM-02C**, một nút nhấn vật lý, gửi **nhấn một lần / nhấn đúp / giữ lâu** dưới dạng sự kiện chuẩn của cluster **Switch** (device type Generic Switch 0x000F), dùng được trong Apple Home, Home Assistant và các controller Matter khác. Thiết bị là **Thread Sleepy End Device (SED)** kiêm **Matter Intermittently Connected Device (ICD)**: ngủ Light-sleep giữa các lần nhấn mà vẫn giữ kết nối Thread, thức dậy bằng ngắt của nút.
+Thiết kế đầy đủ (phần cứng, firmware, tính pin, kiểm thử) cho một **nút nhấn Matter over Thread chạy một viên pin lithium 3 V**: module **ESP32-H2-WROOM-02C**, một nút nhấn vật lý, gửi **nhấn một lần / nhấn đúp / giữ lâu** dưới dạng sự kiện chuẩn của cluster **Switch** (device type Generic Switch 0x000F), dùng được trong Apple Home, Home Assistant và các controller Matter khác. Thiết bị là **Thread Sleepy End Device (SED)** kiêm **Matter Intermittently Connected Device (ICD)**: ngủ Light-sleep giữa các lần nhấn mà vẫn giữ kết nối Thread, thức dậy bằng ngắt của nút.
 
-Firmware: ESP-IDF v6.0.2 + esp-matter release/v1.6.1 (cùng Docker image với các dự án khác trong repo). Cả 5 biến thể (mặc định SIT, LIT, `unique_setup`, `factory`, `debug`) đã build được, cùng bản `chip` cho bo không dùng module ([`hardware-chip/`](hardware-chip/README.md)); host test máy trạng thái nút qua 17 kịch bản. **Chưa đo trên bo thật**: mọi số đo đánh dấu [AS] phải được thay bằng số đo theo [checklist](docs/test-checklist.md).
+Hai bản phần cứng, cùng mạch và cùng firmware, chỉ khác pin, đế pin, tụ bulk và bố trí ([`hardware/`](hardware/README.md)):
 
-Cùng bo này làm **cảm biến cửa** (công tắc lưỡi gà hàn song song nút SW1, không dùng nút nữa): firmware riêng ở [`matter-door-sensor`](https://github.com/haxeko/esp32-iot-project/tree/claude/matter-button-cr2032/ESP32-H2/matter-thread/matter-door-sensor) trong repo esp32-iot-project, nhánh `claude/matter-button-cr2032`.
+| Bo | Pin | Bo (cả anten) | Tuổi pin dự tính, SIT / LIT (20 lần nhấn/ngày) | Firmware |
+|---|---|---|---|---|
+| [`hardware/module-cr2450`](hardware/module-cr2450/README.md) | **CR2450** 620 mAh, đế Keystone 3008 | 37,4 × 36,5 mm | ~11 / ~15 tháng | mặc định |
+| [`hardware/module-cr123a`](hardware/module-cr123a/README.md) | **CR123A** 1500 mAh, đế Bulgin BX0123 | 42,4 × 33,5 mm | ~30 / ~41 tháng | `sdkconfig.defaults.cr123a` |
+
+Firmware ([`firmware/`](firmware)): ESP-IDF v6.0.2 + esp-matter release/v1.6.1. Các biến thể: mặc định (bo CR2450, ICD SIT), `lit`, `cr123a`, `unique_setup`, `factory`, `pmdiag`, `debug`. Host test chạy được không cần ESP-IDF: máy trạng thái nút (17 kịch bản), gửi lại cử chỉ, cách báo % pin. **Chưa đo trên bo thật**: mọi số đo đánh dấu [AS] phải được thay bằng số đo theo [checklist](docs/test-checklist.md).
+
+Bản cũ dùng pin CR2032 (bo 29,8 × 23,9 mm, Keystone 3034) và bo chip ESP32-H2 không dùng module (`hardware-chip/`) đã bỏ khỏi repo: tuổi pin CR2032 chỉ 4–5,5 tháng (mục 1.6). Xem lịch sử git, commit `dad9ded` là bản cuối có cả hai. Firmware cảm biến cửa [`matter-door-sensor`](https://github.com/haxeko/esp32-iot-project/tree/claude/matter-button-cr2032/ESP32-H2/matter-thread/matter-door-sensor) (repo esp32-iot-project) viết cho bo CR2032 cũ; mạch giống hệt nên chạy được trên hai bo này (công tắc lưỡi gà hàn song song SW1).
 
 > **Kết luận nhanh**
 >
-> - CR2032 **không cấp trực tiếp** được cho ESP32-H2 (VDD tối thiểu 3,0 V; pin chỉ ~2,9 V khi có tải và giảm dần về 2,0 V; xung TX/RX 32–68 mA qua điện trở trong 10–25 Ω). Bắt buộc có **buck-boost TPS63900** (Iq 75 nA) và **tụ bulk ≥ 220 µF hiệu dụng** trên đường pin.
-> - Dòng ngủ: ESP32-H2 Light-sleep 25–27 µA ở 3,3 V → **~35 µA tại pin**: đạt mục tiêu < 50 µA, nhưng riêng mức sàn này đã giới hạn tuổi pin ở **tối đa ~6,8 tháng** dù không nhấn lần nào.
-> - Tuổi pin dự tính (TX 0 dBm, 1 controller, 5–100 lần nhấn/ngày): **3,7–4,0 tháng** ở chế độ ICD **SIT** (mặc định, chạy với mọi controller kể cả Apple Home); **4,4–5,6 tháng** ở chế độ **LIT** (Home Assistant có Battery Saver; Apple Home hiện chưa hỗ trợ). **Mục tiêu 6–12 tháng không đạt được với CR2032 + ESP32-H2** khi phải giữ kết nối Thread (điều kiện để phản hồi < 300 ms).
-> - Muốn ~1 năm trở lên: **CR2450** (cùng mạch: ~11 tháng SIT, ~15 tháng LIT), CR123A hoặc 2×AAA (> 1,5 năm), hoặc SoC Thread có dòng ngủ vài µA (mục [1.6](#16-kết-luận-và-phương-án)).
+> - Pin lithium 3 V (Li-MnO2: CR2450, CR123A) **không cấp trực tiếp** được cho ESP32-H2 (VDD tối thiểu 3,0 V; pin chỉ ~2,85–3,0 V khi có tải và giảm dần về 2,0 V). Bắt buộc có **buck-boost TPS63900** (Iq 75 nA). CR2450 có điện trở trong 8–30 Ω nên cần thêm **tụ bulk ≥ 220 µF hiệu dụng** trên đường pin; CR123A dưới 1 Ω, không cần.
+> - Dòng ngủ: ESP32-H2 Light-sleep 25–27 µA ở 3,3 V → **~35 µA tại pin**: đạt mục tiêu < 50 µA. Riêng mức sàn này đã giới hạn tuổi pin ở tối đa **~19 tháng (CR2450)** và **~51 tháng (CR123A)** dù không nhấn lần nào.
+> - Tuổi pin dự tính (TX 0 dBm, 1 controller, 5–100 lần nhấn/ngày): **CR2450: 10,4–11,3 tháng ở SIT** (mặc định, chạy với mọi controller kể cả Apple Home), **12,2–15,7 tháng ở LIT** (Home Assistant có Battery Saver; Apple Home hiện chưa hỗ trợ). **CR123A: 28–31 tháng ở SIT, 33–43 tháng ở LIT.** Mục tiêu 6–12 tháng đạt với cả hai (CR2450 ở SIT sát 12 tháng).
+> - Chọn bo: **CR2450** khi cần gọn (pin dày 5 mm, bo 37,4 × 30,5 mm); **CR123A** khi cần ~2,5 năm và chịu lạnh tốt hơn (pin Ø17 × 34,5 mm, bo 42,4 × 27,5 mm).
 > - Phản hồi: sự kiện đầu tiên (`InitialPress`) rời anten **~25–40 ms** sau khi nhấn; sự kiện "nhấn một lần" mà Apple Home / Home Assistant dùng (`MultiPressComplete`) đi ra **350 ms sau khi nhả** (cửa sổ phân biệt nhấn đúp, chỉnh được; tắt nhấn đúp thì có ngay).
 
 ## Mục lục
@@ -27,7 +34,21 @@ Cùng bo này làm **cảm biến cửa** (công tắc lưỡi gà hàn song son
 9. [Bảng tính thời lượng pin](#9-bảng-tính-thời-lượng-pin)
 10. [Rủi ro và cách khắc phục](#10-rủi-ro-và-cách-khắc-phục)
 
-Kiểm thử: [`docs/test-checklist.md`](docs/test-checklist.md). PCB KiCad và file sản xuất: [`hardware/`](hardware/README.md) (module ESP32-H2-WROOM-02C); bản **chip ESP32-H2 + thạch anh + anten in trên PCB + LED RGB WS2812B**, không dùng module, bo 4 lớp 29,8 × 29,8 mm: [`hardware-chip/`](hardware-chip/README.md) (firmware: thêm `sdkconfig.defaults.chip`, mục 8.2).
+Cấu trúc repo:
+
+```
+h2-thread-button/
+├── README.md                 tài liệu chính (file này)
+├── firmware/                 dự án ESP-IDF / esp-matter, chung cho mọi bo (mục 7)
+├── hardware/                 các bo KiCad, mỗi bo một thư mục + bộ script sinh dùng chung (hardware/README.md)
+│   ├── scripts/
+│   ├── module-cr2450/
+│   └── module-cr123a/
+├── docs/                     test-checklist.md, sơ đồ nguyên lý (ảnh)
+└── tools/                    mô hình pin, mô phỏng tụ bulk, vẽ sơ đồ, công cụ factory data (matter-mfg)
+```
+
+Kiểm thử: [`docs/test-checklist.md`](docs/test-checklist.md). PCB KiCad và file sản xuất: [`hardware/`](hardware/README.md).
 
 Ký hiệu nguồn số liệu dùng trong toàn tài liệu: **[DS]** datasheet; **[ME]** số đo công bố của Espressif (esp-matter `examples/icd_app`, ESP32-H2 DevKitC); **[AS]** giả định / ước lượng, phải đo lại trên bo thật.
 
@@ -39,10 +60,12 @@ Ký hiệu nguồn số liệu dùng trong toàn tài liệu: **[DS]** datasheet
 
 | Thông số | Giá trị | Nguồn |
 |---|---|---|
-| CR2032: điện áp danh định, dung lượng | 3,0 V; 235 mAh tới 2,0 V với tải 15 kΩ (≈ 0,19 mA); các hãng khác 220–225 mAh | [DS] Energizer CR2032 |
-| CR2032: điện áp có tải | ~2,9 V phần lớn đời pin (tải nhẹ); ~2,8 V với xung 6,8 mA; tụt nhanh sau ~200 mAh | [DS] Energizer, đồ thị xung |
-| CR2032: điện trở trong | ~10 Ω khi mới; ~15 Ω ở 150 mAh; ~20 Ω ở 175 mAh; ~25 Ω ở 200 mAh; > 100 Ω khi cạn | [DS] Energizer, đường IR |
-| CR2032: tự xả, nhiệt độ | ~1 %/năm; −30…60 °C | [DS] |
+| CR2450: điện áp danh định, dung lượng | 3,0 V; 620 mAh tới 2,0 V (Energizer, Panasonic, Murata; Renata CR2450N 540 mAh) | [DS] |
+| CR2450: điện áp có tải | ~2,9 V phần lớn đời pin ở tải nhẹ; tụt nhanh sau ~85 % dung lượng | [DS] đồ thị xả |
+| CR2450: điện trở trong | ~8–10 Ω khi mới, ~12–15 Ω giữa đời, 20–30 Ω gần cuối; ×2–2,5 ở −10 °C | [AS] đường IR của CR2032 (Energizer) chia theo diện tích điện cực (`tools/capsim.py`) |
+| CR123A (IEC CR17345): điện áp, dung lượng | 3,0 V; 1400–1550 mAh tới 2,0 V (Panasonic CR123A, Energizer EL123AP, Duracell) | [DS] |
+| CR123A: điện trở trong | ~0,1–0,3 Ω khi mới, dưới 1 Ω gần suốt đời pin; chịu xung 1–2 A | [DS] đồ thị xung / [AS] |
+| Tự xả, nhiệt độ | ~1 %/năm; −30…60 °C (CR2450), −40…60 °C (CR123A) | [DS] |
 | ESP32-H2: điện áp cấp (VDD3P3, VBAT, VDDPST) | **3,0–3,6 V** (typ 3,3 V) | [DS] ESP32-H2 v1.3, Bảng 5-2 |
 | ESP32-H2: TX 802.15.4 | 36 mA @ 0 dBm; 60 mA @ 9 dBm; **140 mA @ 20 dBm** | [DS] Bảng 5-7 |
 | ESP32-H2: RX 802.15.4 / BLE | 25 mA / 24 mA | [DS] Bảng 5-6, 5-7 |
@@ -56,11 +79,11 @@ Ký hiệu nguồn số liệu dùng trong toàn tài liệu: **[DS]** datasheet
 | TPS63900: dòng tĩnh | 75 nA typ, 1 µA max | [DS] |
 | TPS63900: hiệu suất, 3,3 V ra | ~89–91 % (VIN 2,5–3,3 V, tải 10 µA–10 mA); ~87 % ở VIN 1,8 V | [DS] Hình 8-7 |
 
-### 1.2 CR2032 có cấp trực tiếp cho ESP32-H2 được không? Không
+### 1.2 Pin lithium 3 V có cấp trực tiếp cho ESP32-H2 được không? Không
 
-1. **Điện áp.** ESP32-H2 cần ≥ 3,0 V. CR2032 chỉ 3,0–3,2 V khi hở mạch lúc còn mới, ~2,9 V khi có tải và giảm dần về 2,0 V. Nối trực tiếp thì chip chạy **ngoài thông số ngay từ đầu**, và brownout (mức thấp nhất 2,57 V) cắt khi pin còn phần lớn dung lượng.
-2. **Dòng.** Xung TX/RX 25–36 mA (0 dBm) qua điện trở trong 10–25 Ω gây sụt 0,25–0,9 V; ở +20 dBm (140 mA, mặc định của driver ESP-IDF) sụt 1,4–3,5 V → reset ở mỗi khung phát.
-3. **Chân VBAT của module không phải đầu vào pin.** Trong WROOM-02C, chân 14 (VBAT) nối sẵn vào 3V3 qua điện trở 0 Ω (datasheet module, mục 8: *"When VBAT is powered by external battery, R2 can be NC"*). Đưa CR2032 vào chân này là chập pin với đường 3V3.
+1. **Điện áp.** ESP32-H2 cần ≥ 3,0 V. Pin Li-MnO2 (CR2450, CR123A) chỉ 3,0–3,3 V khi hở mạch lúc còn mới, ~2,85–3,0 V khi có tải và giảm dần về 2,0 V. Nối trực tiếp thì chip chạy **ngoài thông số ngay từ đầu**, và brownout (mức thấp nhất 2,57 V) cắt khi pin còn phần lớn dung lượng. Điều này đúng cả với CR123A dù pin chịu dòng tốt.
+2. **Dòng (CR2450).** Xung TX/RX 25–36 mA (0 dBm) qua điện trở trong 8–30 Ω gây sụt 0,2–1 V; ở +20 dBm (140 mA, mặc định của driver ESP-IDF) sụt 1–4 V → reset ở mỗi khung phát. CR123A (< 1 Ω) chỉ sụt vài chục mV.
+3. **Chân VBAT của module không phải đầu vào pin.** Trong WROOM-02C, chân 14 (VBAT) nối sẵn vào 3V3 qua điện trở 0 Ω (datasheet module, mục 8: *"When VBAT is powered by external battery, R2 can be NC"*). Đưa pin vào chân này là chập pin với đường 3V3.
 
 → Cần bộ **buck-boost** giữ 3,3 V khi pin đi từ 3,2 V xuống ~1,8 V. LDO không dùng được (pin < 3,3 V). Boost thuần không hạ áp được khi pin mới (3,2 V gần bằng đầu ra). Chọn **TI TPS63900**: Iq 75 nA (≈ 0,2 % của mức sàn 35 µA), hiệu suất ~90 % ở dòng µA–mA, đầu vào tới 1,8 V.
 
@@ -82,11 +105,16 @@ Bộ buck-boost là **tải công suất không đổi**: I_pin = I_3V3 × 3,3 V
 
 Mô hình: pin = nguồn V_oc nối tiếp R_trong. TPS63900 tắt khi V_pin < ~1,65 V (UVLO), lúc đó 3V3 sập và ESP32-H2 brownout.
 
-- **Không có tụ bulk**, pin đã dùng ~200 mAh (V_oc ≈ 2,6 V, R ≈ 25 Ω): xung TX 0 dBm 55 mA → sụt 1,4 V → V_pin ≈ 1,2 V < UVLO → **reset ở mỗi lần phát**.
-- **Có tụ bulk C trên đường pin** (trước buck-boost): tụ cấp phần lớn xung ngắn, pin nạp lại tụ qua R. Sụt áp sau thời gian t: ΔV = I·R·(1 − e^(−t/RC)). Khung 802.15.4 dài nhất 127 byte = **4,3 ms** ở 250 kbit/s. Với C = 220 µF hiệu dụng, R = 25 Ω (τ = 5,5 ms): ΔV = 1,38 V × (1 − e^(−0,78)) = **0,75 V** → V_pin ≈ 1,9 V > UVLO. Thiết kế dùng **2 × 220 µF 1210 X5R** (≈ 260 µF hiệu dụng ở 3 V sau DC-bias [AS], kiểm tra bằng Murata SimSurfing hoặc đo).
+**CR2450** (bo `module-cr2450`):
+
+- **Không có tụ bulk**, pin đã dùng ~80 % (V_oc ≈ 2,8 V, R ≈ 20 Ω [AS]): xung TX 0 dBm 55 mA → sụt 1,1 V → V_pin ≈ 1,7 V, sát UVLO; lạnh hoặc pin kém hơn thì **reset ở mỗi lần phát**.
+- **Có tụ bulk C trên đường pin** (trước buck-boost): tụ cấp phần lớn xung ngắn, pin nạp lại tụ qua R. Sụt áp sau thời gian t: ΔV = I·R·(1 − e^(−t/RC)). Khung 802.15.4 dài nhất 127 byte = **4,3 ms** ở 250 kbit/s. Với C = 260 µF hiệu dụng, R = 20 Ω (τ = 5,2 ms): ΔV = 1,1 V × (1 − e^(−0,83)) = **0,62 V** → V_pin ≈ 2,2 V > UVLO. Thiết kế dùng **2 × 220 µF 1210 X5R** (≈ 260 µF hiệu dụng ở 3 V sau DC-bias [AS], kiểm tra bằng Murata SimSurfing hoặc đo).
 - Đặt tụ **phía pin** (được phép sụt từ 2,9 V xuống ~1,8 V) dùng năng lượng tụ hiệu quả hơn nhiều so với phía 3,3 V (chỉ được sụt 0,3 V trước brownout 2,94 V).
-- **Thu liên tục** khi re-attach Thread (Parent Request tới router rồi tới REED: 0,75 s + 1,25 s ≈ 2 s RX) thì không tụ nào bù được: pin phải tự cấp ~95 mW (25 mA × 3,3 V / η). Giữ V_pin ≥ 1,75 V đòi hỏi R_trong ≤ ~20 Ω (V_oc 2,8 V), tức **~175 mAh** trên đường Energizer. Mô hình pin vì vậy chỉ tính **80 % dung lượng danh định** (176 mAh). Qua mức đó nút vẫn chạy (xung ngắn vẫn có tụ đỡ), nhưng một lần re-attach (mất Border Router, khởi động lại) có thể gây brownout.
-- **Firmware bảo vệ thêm:** brownout 2,94 V trên đường 3,3 V; bộ đếm brownout và đo áp lúc khởi động → Deep-sleep 1 giờ khi pin quá yếu (không reset lặp vô hạn); từ chối tải OTA khi pin không ở mức OK; đo điện trở trong mỗi ngày để báo pin yếu **trước** khi sập (mục [2.5](#25-đo-pin-gần-như-không-tốn-dòng)).
+- **Thu liên tục** khi re-attach Thread (Parent Request tới router rồi tới REED: 0,75 s + 1,25 s ≈ 2 s RX) thì không tụ nào bù được: pin phải tự cấp ~95 mW (25 mA × 3,3 V / η). Giữ V_pin ≥ 1,75 V đòi hỏi R_trong ≤ ~20 Ω (V_oc 2,8 V). Mô hình pin vì vậy chỉ tính **80 % dung lượng danh định** (496 mAh) [AS]. Qua mức đó nút vẫn chạy (xung ngắn vẫn có tụ đỡ), nhưng một lần re-attach (mất Border Router, khởi động lại) có thể gây brownout.
+
+**CR123A** (bo `module-cr123a`): R_trong dưới 1 Ω gần suốt đời pin, nên mọi xung (TX, RX 2 s, khởi động) chỉ sụt 0,05–0,4 V. Mô phỏng `tools/capsim.py` [AS] cho V_pin thấp nhất ≥ 2,55 V khi khởi động hoặc re-attach ở mọi trạng thái pin tới −10 °C, **có hay không có tụ bulk**. Bo chỉ có 1 × 100 µF (lọc gần đầu vào, đường VBAT dài) cùng 10 µF ở VIN của TPS63900. Mô hình tính **90 %** dung lượng (1350 mAh).
+
+**Firmware bảo vệ thêm (cả hai bo):** brownout 2,94 V trên đường 3,3 V; bộ đếm brownout và đo áp lúc khởi động → Deep-sleep 1 giờ khi pin quá yếu (không reset lặp vô hạn); từ chối tải OTA khi pin không ở mức OK; đo điện trở trong mỗi ngày để báo pin yếu **trước** khi sập (mục [2.5](#25-đo-pin-gần-như-không-tốn-dòng)).
 
 ### 1.5 Dòng ngủ là giới hạn chính
 
@@ -100,9 +128,9 @@ Dòng trung bình, SIT 15 s, 20 lần nhấn/ngày, 1 controller (`tools/battery
 | Bảo trì Thread/Matter (SRP, MLE, đo pin, hỏi OTA) | 0,7 µA | 1,5 % |
 | 20 lần nhấn/ngày | 0,9 µA | 1,9 % |
 | **Tổng tại 3,3 V** | **46,1 µA** | |
-| **Tại pin** (× 3,3 / (0,89 × 2,85) + Iq + rò) | **60 µA** | → **4,0 tháng** |
+| **Tại pin** (× 3,3 / (0,89 × V_pin) + Iq + rò) | **60 µA** (CR2450) / **59 µA** (CR123A) | → **11,2 tháng** / **30,4 tháng** |
 
-Chỉ riêng Light-sleep (không poll, không nhấn) đã là 35,4 µA tại pin → **trần ~6,8 tháng**. Muốn 12 tháng với 176 mAh dùng được thì dòng trung bình tại pin phải ≤ ~20 µA, nghĩa là dòng ngủ của chip phải < ~12 µA: ESP32-H2 không có chế độ nào như vậy mà vẫn giữ kết nối Thread.
+Chỉ riêng Light-sleep (không poll, không nhấn) đã là ~35 µA tại pin → trần **~18,8 tháng** với CR2450 (496 mAh dùng được), **~51 tháng** với CR123A (1350 mAh). Với CR2450, muốn ≥ 12 tháng ở SIT thì dòng trung bình tại pin phải ≤ ~56 µA: dùng LIT (chỉ Home Assistant), hoặc bo CR123A.
 
 **Vì sao không dùng Deep-sleep (7 µA)?** Deep-sleep tắt RAM, mất trạng thái Thread và phiên Matter. Mỗi lần nhấn sẽ phải khởi động lại, attach Thread (≥ 2 s thu), mở lại phiên CASE và subscription (vài giây): **không đạt < 300 ms**, controller thấy thiết bị offline giữa các lần nhấn, và mỗi lần nhấn tốn 60–200 mC (bằng 2–8 giờ Light-sleep).
 
@@ -112,19 +140,17 @@ Chỉ riêng Light-sleep (không poll, không nhấn) đã là 35,4 µA tại pi
 |---|---|---|
 | Dòng ngủ < 50 µA | 27 µA tại 3,3 V; ~35 µA tại pin | ✅ |
 | Phản hồi < 300 ms | `InitialPress` rời anten ~25–40 ms sau khi nhấn; "nhấn một lần" = lúc nhả + 350 ms (chỉnh được, mục [6.6](#66-độ-trễ)) | ✅ có điều kiện |
-| Pin 6–12 tháng | SIT 3,7–4,0 tháng; LIT 4,4–5,6 tháng | ❌ |
+| Pin 6–12 tháng | CR2450: SIT 10,4–11,3 tháng, LIT 12,2–15,7 tháng; CR123A: SIT 28–31 tháng, LIT 33–43 tháng | ✅ (CR2450 ở SIT sát 12 tháng) |
 
-Phương án khác (20 lần nhấn/ngày, 1 controller, cùng mạch và firmware, `tools/battery_model.py`):
+Các nguồn pin đã xét (20 lần nhấn/ngày, 1 controller, cùng mạch và firmware, `tools/battery_model.py`):
 
 | Nguồn | SIT 15 s (Apple + HA) | LIT 120 s (HA Battery Saver) | Ghi chú |
 |---|---|---|---|
-| CR2032 (thiết kế này) | 4,0 tháng | 5,4 tháng | |
-| **CR2450** (620 mAh, Ø24,5 × 5,0 mm) | **11,2 tháng** | **15,0 tháng** | cùng mạch, chỉ đổi đế pin; khuyến nghị nếu cần ~1 năm |
-| CR123A (1500 mAh) | ~30 tháng | ~41 tháng | Ø17 × 34,5 mm, chịu xung tốt |
-| 2 × AAA alkaline (1150 mAh) | ~19 tháng | ~26 tháng | TPS63900 chạy tới 1,8 V (0,9 V/cell); pin alkaline có thể chảy |
-| CR2032 + SoC dòng ngủ ~2 µA | 8,6 tháng | 19,7 tháng | chỉ đổi mức sàn, vẫn giữ chi phí poll của ESP32-H2 |
-
-Nếu bắt buộc CR2032 và ≥ 6 tháng: dùng LIT (chỉ với Home Assistant), một controller, ít lần nhấn; hoặc chuyển sang SoC Thread chuyên dùng pin có dòng ngủ giữ RAM cỡ vài µA (phải thiết kế lại phần cứng và firmware).
+| **CR2450** (bo `module-cr2450`) | **11,2 tháng** | **15,0 tháng** | 620 mAh × 0,80; Ø24,5 × 5,0 mm; bo gọn nhất |
+| **CR123A** (bo `module-cr123a`) | **30,4 tháng** | **40,7 tháng** | 1500 mAh × 0,90; Ø17 × 34,5 mm; chịu xung và lạnh tốt |
+| CR2032 (bo cũ, đã bỏ) | 4,0 tháng | 5,4 tháng | 220 mAh × 0,80: lý do bỏ |
+| 2 × AAA alkaline (chưa có bo) | ~19 tháng | ~26 tháng | TPS63900 chạy tới 1,8 V (0,9 V/cell); pin alkaline có thể chảy |
+| CR2450 + SoC dòng ngủ ~2 µA | 23,9 tháng | 53,4 tháng | chỉ đổi mức sàn, vẫn giữ chi phí poll của ESP32-H2 (phải thiết kế lại phần cứng và firmware) |
 
 ---
 
@@ -134,10 +160,10 @@ Nếu bắt buộc CR2032 và ≥ 6 tháng: dùng LIT (chỉ với Home Assistan
 
 ```
             Q1 P-FET                 VBAT (1,8 .. 3,2 V)                   3V3
- CR2032 ──► chống ngược ──JP1──┬────────────────┬──► TPS63900 ──JP2──┬──► ESP32-H2-WROOM-02C
- (BT1)      cực              C1+C2            R9 1 MΩ   buck-boost       │      GPIO10 ◄── SW1 (LP IO, EXT1 wake)
-                             2 × 220 µF        │        3,3 V, Iq 75 nA  │      GPIO22 ──► LED D1
-                             (tụ bulk)         └──────── VBAT_SENSE ─────┼────► GPIO1 (ADC1_CH0)
+ Pin ─────► chống ngược ──JP1──┬────────────────┬──► TPS63900 ──JP2──┬──► ESP32-H2-WROOM-02C
+ (BT1)      cực              C1(+C2)          R9 1 MΩ   buck-boost       │      GPIO10 ◄── SW1 (LP IO, EXT1 wake)
+ CR2450 /                    tụ bulk           │        3,3 V, Iq 75 nA  │      GPIO22 ──► LED D1
+ CR123A                      (theo bo)         └──────── VBAT_SENSE ─────┼────► GPIO1 (ADC1_CH0)
                                                                          │      UART0, EN, BOOT, USB ──► pad nạp/debug
                                                                        C4..C6
 ```
@@ -146,7 +172,7 @@ Nếu bắt buộc CR2032 và ≥ 6 tháng: dùng LIT (chỉ với Home Assistan
 |---|---|
 | Q1 (P-MOSFET) | chống lắp ngược pin, sụt ~5 mV (R_DS(on) ~0,1 Ω ở 50 mA) thay vì 0,3 V của diode Schottky |
 | JP1, JP2 (cầu hàn) | điểm cắt để đo dòng pin (JP1) và dòng đường 3,3 V (JP2); mặc định nối |
-| C1, C2 | tụ bulk, cấp xung TX/RX ngắn, giảm sụt áp trên điện trở trong của pin (mục 1.4) |
+| C1, C2 | tụ bulk, cấp xung TX/RX ngắn, giảm sụt áp trên điện trở trong của pin (mục 1.4): bo CR2450 2 × 220 µF; bo CR123A chỉ C1 100 µF |
 | TPS63900 | buck-boost 3,3 V, Iq 75 nA, chạy từ 1,8 V |
 | R9 + C9 | đo áp pin không tốn dòng (mục 2.5) |
 | SW1 + R6/R7/C8 | nút nhấn, lọc RC, kéo lên 1 MΩ (mục 2.4) |
@@ -154,7 +180,7 @@ Nếu bắt buộc CR2032 và ≥ 6 tháng: dùng LIT (chỉ với Home Assistan
 
 ### 2.2 Đường nguồn
 
-- **Q1 AO3401A** nối kiểu "ideal diode": D về pin, S về VBAT, G xuống GND. Lắp đúng: diode thân dẫn trước, V_GS = −V_pin → FET mở. Lắp ngược: V_GS = 0, diode thân phân cực ngược → không có dòng. Cần thiết vì tay giữ (+) của đế Keystone 3034 chạm mặt trên của pin: lắp úp pin thì mặt (−) chạm tay giữ (+), mặt (+) chạm pad GND.
+- **Q1 AO3401A** nối kiểu "ideal diode": D về pin, S về VBAT, G xuống GND. Lắp đúng: diode thân dẫn trước, V_GS = −V_pin → FET mở. Lắp ngược: V_GS = 0, diode thân phân cực ngược → không có dòng. Cần thiết vì cả hai đế đều lắp ngược pin được: với đế Keystone 3008 (CR2450), lá kẹp (+) chạm mặt trên của pin, lắp úp pin thì mặt (−) chạm lá kẹp (+), mặt (+) chạm pad GND; đế Bulgin BX0123 (CR123A) cho cắm ngược đầu pin.
 - **TPS63900** (theo mạch điển hình 3,3 V của datasheet, Hình 8-1 / Bảng 8-5):
   - CFG1 = **36,5 kΩ** và CFG2 = **0 Ω** → VO(2) = 3,3 V, giới hạn dòng vào **không giới hạn** (Bảng 7-2). Không dùng giới hạn dòng vào: tụ bulk đặt trước bộ chuyển đổi đã gánh xung; giới hạn thấp hơn dòng cần lúc pin yếu (68 mA ở 2,0 V) sẽ làm sụt 3,3 V. Muốn thử giới hạn 100 mA thì đổi R2 (CFG2) thành 511 Ω.
   - CFG3 = **0 Ω** → VO(1) = 1,8 V (Bảng 7-3), không dùng tới: SEL nối VIN nên luôn chọn VO(2). Chân không được để hở; 0 Ω cũng là giá trị của mạch tham chiếu 3,3 V trong datasheet (Bảng 8-5), và R2, R3 dùng chung một mã linh kiện.
@@ -201,7 +227,7 @@ VBAT ──R9 1 MΩ──┬── GPIO1 (ADC1_CH0, ATTEN 12 dB, 0..3,3 V)
                GND
 ```
 
-- **Không có cầu chia áp**: V_pin ≤ 3,3 V nằm gọn trong dải ADC 0–3300 mV. Cầu chia 1 MΩ/1 MΩ sẽ tốn 1,5 µA liên tục (4 % mức sàn); mạch này không có đường DC nào xuống GND, chỉ có dòng rò chân (≤ 50 nA [DS], thường vài nA).
+- **Không có cầu chia áp**: V_pin ≤ 3,3 V nằm gọn trong dải ADC 0–3300 mV (pin Li-MnO2; pin sạc RCR123A 3,7–4,2 V vượt dải, không dùng được với phép đo này). Cầu chia 1 MΩ/1 MΩ sẽ tốn 1,5 µA liên tục (4 % mức sàn); mạch này không có đường DC nào xuống GND, chỉ có dòng rò chân (≤ 50 nA [DS], thường vài nA).
 - **C9** giữ điện tích cho tụ lấy mẫu của ADC (16 mẫu ≈ vài nC → sai số µV). **R9 1 MΩ** cách ly và giới hạn dòng khi TPS63900 tắt (V_pin vẫn còn, 3V3 = 0 V: dòng qua diode bảo vệ chân ≤ ~1 µA).
 - Sai số do dòng rò chân qua 1 MΩ: ≤ 50 mV trường hợp xấu nhất, thường < 5 mV; phép đo điện trở trong dùng hiệu hai lần đo nên sai số này triệt tiêu.
 - **Firmware** (`main/battery.cpp`): đo **áp nghỉ** 12 giờ một lần (ADC chỉ bật vài ms, khoá Light-sleep trong lúc đo), và **mỗi ngày một lần đo có tải**: cho CPU chạy hết tốc độ 500 ms (~13 mA từ pin), đọc lại áp (RC 100 ms → đã ổn định sau 5τ), tính sụt áp, nhân 2,5 (tỷ lệ dòng thu radio / dòng CPU, `BATTERY_BURST_RATIO_X100`) để **dự đoán áp pin khi thu liên tục**. Mức pin:
@@ -215,26 +241,26 @@ VBAT ──R9 1 MΩ──┬── GPIO1 (ADC1_CH0, ATTEN 12 dB, 0..3,3 V)
 
 Ngoài ra `BatVoltage` (mV) và `BatPercentRemaining` (đếm điện tích đã dùng, giới hạn bằng áp nghỉ: xem dưới). Ngưỡng là [AS], hiệu chỉnh theo phép đo ở checklist (mục I).
 
-**`BatPercentRemaining` chia đều theo thời gian dùng, phần cuối theo áp đo thật** (`main/battery_gauge.cpp`, có host test). Ở dòng ~60 µA, pin lithium cúc áo (CR2032, CR2450) nằm trên vùng ổn định ~2,95–3,0 V gần suốt đời: áp không phân biệt được 95 % với 30 %. Vì vậy:
+**`BatPercentRemaining` chia đều theo thời gian dùng, phần cuối theo áp đo thật** (`main/battery_gauge.cpp`, có host test). Ở dòng ~60 µA, pin Li-MnO2 (CR2450, CR123A) nằm trên vùng ổn định ~2,95–3,0 V gần suốt đời: áp không phân biệt được 95 % với 30 %. Vì vậy:
 
 - **100 % → 20 %: đếm điện tích.** Điện tích đã dùng = thời gian chạy × dòng trung bình mô hình (`BATTERY_MODEL_AVG_UA` = 60 µA; đặt bằng số đo ở JP1 theo checklist F5 để khớp hơn), chia cho dung lượng danh định (`BATTERY_CAPACITY_MAH`). % giảm đều tới `BATTERY_MODEL_FLOOR_PERCENT` = 20 % rồi **dừng ở đó**: phép đếm không bao giờ tự báo dưới 20 %. Số đếm lưu trong NVS (~1 lần/ngày), không mất khi tháo pin.
 - **Dưới 20 %: chỉ theo áp nghỉ đo được.** Khi pin rời vùng ổn định thì áp giới hạn %: ≥ 2 900 mV không giới hạn; 2 900 → 2 850 mV giới hạn giảm từ 100 % xuống 20 %; từ 2 850 mV (đầu "khuỷu") xuống 2 400 mV giới hạn giảm từ 20 % về 0 % (2 800 mV ≈ 12 %, 2 700 mV = 5 %, 2 600 mV = 2 %). Thiết bị tốn hơn mô hình thì khuỷu tới sớm và % bị kéo xuống theo áp; tốn ít hơn thì % đứng ở 20 % cho tới khi áp thật sự giảm. Các mốc áp là [AS] từ đường xả Energizer/Panasonic/Maxell, hiệu chỉnh bằng một lần xả thật (checklist L5).
 - **Nhận pin mới**: sau mỗi lần lắp pin (reset power-on), nếu một trong 3 lần đo đầu ≥ 3 020 mV hoặc cao hơn áp đã báo trước đó ≥ 60 mV thì số đếm về 0 (log `New cell ... charge count restarted`). Lắp lại đúng pin cũ thì giữ số đếm. Lên bản này từ bản cũ (bản ghi NVS chưa có số đếm): đếm từ 0, tức báo 100 % với pin đang dùng.
-- **Loại pin** (`BATTERY_CR2032` mặc định, hoặc `BATTERY_CR2450` qua `sdkconfig.defaults.cr2450`): đổi `BatIECDesignation` và dung lượng mặc định.
+- **Loại pin = bo** (`BATTERY_CR2450` mặc định, hoặc `BATTERY_CR123A` qua `sdkconfig.defaults.cr123a`): đổi `BatIECDesignation` ("CR2450" / "CR17345", tên IEC của CR123A), mô tả thay pin, dung lượng mặc định và chuỗi phiên bản phần cứng. Các mốc áp dùng chung: cùng hoá học Li-MnO2.
 
 | Dòng TB 60 µA | 100 % | 75 % | 50 % | 20 % (bắt đầu đứng) |
 |---|---|---|---|---|
-| CR2032 (220 mAh) | 0 | ~38 ngày | ~76 ngày | ~4 tháng |
 | CR2450 (620 mAh) | 0 | ~3,5 tháng | ~7 tháng | ~11,3 tháng |
+| CR123A (1500 mAh) | 0 | ~8,6 tháng | ~17 tháng | ~27 tháng |
 
-**Cách đo áp** (CR2032 đọc thấp vài phút sau mỗi đợt dòng radio):
+**Cách đo áp** (pin cúc áo đọc thấp vài phút sau mỗi đợt dòng radio; CR123A hồi nhanh hơn):
 
 - **Không báo số đo lúc khởi động.** Số đo này có tải (CPU chạy, C9 còn đang nạp) và chỉ dùng cho boot guard. Sau khi thay hoặc lắp lại pin, thiết bị báo lại **giá trị đã báo lần trước** (lưu trong NVS, factory reset không xoá) cho tới lần đo nghỉ đầu tiên; lần đầu dùng (chưa lưu gì) thì `BatPercentRemaining` để trống.
 - **Chỉ đo nghỉ khi radio đã yên**: không có cửa sổ ghép nối, không tải OTA, và đã **10 phút** (`BATTERY_QUIET_MIN`) không có khởi động, nối mạng Thread hay lần nhấn nào. Hoạt động kéo dài quá 2 giờ thì vẫn đo.
 - **Áp tăng thì báo ngay** (pin hồi, pin mới); **áp giảm chỉ được báo khi 3 lần đo nghỉ liên tiếp đều thấp hơn** (`BATTERY_DROP_CONFIRM_COUNT`), và báo giá trị cao nhất trong 3 lần đó. Trong lúc chờ xác nhận, thiết bị đo lại mỗi **60 phút** (`BATTERY_CONFIRM_INTERVAL_MIN`) thay vì 12 giờ, nên pin yếu thật hiện ra sau ~2 giờ. Sau mỗi lần khởi động còn đo thêm **2 lần cách nhau 60 phút** sau lần đo đầu: lần đầu có thể rơi ngay sau khi ghép nối hoặc nạp firmware, lúc pin chưa hồi, và số thấp đó được nâng lại trong ~2 giờ thay vì 12 giờ. Mức pin (OK/Warning/Critical) đi theo áp nghỉ đã báo và lần đo có tải mới nhất. Logic nằm ở `main/battery_report.cpp` (có host test).
 - **Bản 1.0.2610292112 tới 1.0.2611052141 đo mỗi ~4 phút thay vì 12 giờ** (lỗi tràn số: `pdMS_TO_TICKS()` nhân 32 bit, ở 1000 Hz tràn khi quá 4295 s). Hậu quả: % tăng theo lần đo cao nhất trong ngày, phép đo có tải chạy mỗi ~8 phút (thêm ~14 µA, ~20 % ngân sách). Đã sửa: mọi khoảng chờ trong `battery.cpp` đổi sang tick bằng phép nhân 64 bit.
 - **Nạp firmware mới bằng `write-flash "@flash_args"`** để giữ ghép nối và % đã lưu. File đầy đủ nạp ở `0x0` xoá NVS: phải ghép lại, và lần đo đầu sau khi ghép được báo ngay, không qua bước xác nhận.
-- **% không phải thước đo dòng tiêu thụ.** % là mô hình: nó không thấy dòng rò. Bản ≤ 1.0.2611060329 còn tính % từ bảng áp dốc 0,3 %/mV ở đầu bảng (3 000 mV = 100 %, 2 950 = 85 %): bước 100 % → 93 % chỉ là ~23 mV, bằng sai số ADC. Pin mới (hở mạch 3,1–3,3 V) tụt về mức ổn định 2,95–3,02 V trong đêm đầu là bình thường. Với điện trở trong ~10 Ω, dòng rò 1–5 mA chỉ hạ áp 10–50 mV (vẫn đọc 85–100 %); con số % chỉ loại trừ được dòng liên tục ≥ ~10 mA (CPU hoặc radio không bao giờ tắt). Muốn biết dòng thật: đo ở JP1 hoặc đọc các dòng `pm` của bản `pmdiag` (checklist F12). Dòng `battery: Load test: rest R, loaded L`: R − L ≈ 100–150 mV là chip thật sự ngủ giữa hai lần đo, ≈ 50 mV là CPU luôn thức; dòng này không thấy được tải nền khác (LED, BLE còn bật).
+- **% không phải thước đo dòng tiêu thụ.** % là mô hình: nó không thấy dòng rò. Bản ≤ 1.0.2611060329 còn tính % từ bảng áp dốc 0,3 %/mV ở đầu bảng (3 000 mV = 100 %, 2 950 = 85 %): bước 100 % → 93 % chỉ là ~23 mV, bằng sai số ADC. Pin mới (hở mạch 3,1–3,3 V) tụt về mức ổn định 2,95–3,02 V trong đêm đầu là bình thường. Với điện trở trong ~10 Ω (CR2450 mới), dòng rò 1–5 mA chỉ hạ áp 10–50 mV (vẫn đọc 85–100 %; với CR123A dưới 1 Ω thì gần như không đổi); con số % chỉ loại trừ được dòng liên tục ≥ ~10 mA (CPU hoặc radio không bao giờ tắt). Muốn biết dòng thật: đo ở JP1 hoặc đọc các dòng `pm` của bản `pmdiag` (checklist F12). Dòng `battery: Load test: rest R, loaded L`: R − L ≈ 100–150 mV là chip thật sự ngủ giữa hai lần đo, ≈ 50 mV là CPU luôn thức; dòng này không thấy được tải nền khác (LED, BLE còn bật).
 
 ### 2.6 Ngân sách dòng rò (25 °C)
 
@@ -242,7 +268,7 @@ Ngoài ra `BatVoltage` (mV) và `BatPercentRemaining` (đếm điện tích đã
 |---|---|---|
 | ESP32-H2 Light-sleep (ở 3,3 V) | 25 µA typ / 27 µA đo | [DS] / [ME] |
 | TPS63900 Iq (đầu vào) | 75 nA typ, 1 µA max | [DS] |
-| Tụ bulk C1 + C2 (2 × 220 µF X5R) | **phải đo**; thường 0,05–0,5 µA sau vài phút có áp; spec chỉ cho điện trở cách điện tối thiểu (họ MLCC X5R dung lượng lớn thường ghi 50 Ω·F → tới ~13 µA/tụ ở 3 V trong trường hợp xấu nhất) | [DS] spec tối thiểu, [AS] điển hình |
+| Tụ bulk (bo CR2450: C1 + C2, 2 × 220 µF X5R; bo CR123A: C1 100 µF) | **phải đo**; thường 0,05–0,5 µA sau vài phút có áp; spec chỉ cho điện trở cách điện tối thiểu (họ MLCC X5R dung lượng lớn thường ghi 50 Ω·F → tới ~13 µA/tụ ở 3 V trong trường hợp xấu nhất) | [DS] spec tối thiểu, [AS] điển hình |
 | Q1 (dòng rò cổng) | ≤ 100 nA max, thường < 1 nA | [DS] |
 | Chân ADC GPIO1 | ≤ 50 nA | [DS] |
 | Nút nhả / nhấn | ≤ 50 nA / 3,3 µA (chỉ khi đang giữ) | tính |
@@ -254,26 +280,30 @@ Kiểm tra rò tụ bulk là bước đầu tiên của checklist: đo dòng to�
 
 ### 2.7 Bố trí PCB và anten
 
-PCB đã thiết kế bằng KiCad 9: **[`hardware/`](hardware/README.md)** (schematic, PCB đã đi dây, Gerber, BOM, file vị trí linh kiện; ERC và DRC sạch). Bản không dùng module, **[`hardware-chip/`](hardware-chip/README.md)**: chip ESP32-H2FH4, thạch anh 32 MHz + 32,768 kHz, anten in trên bo (TI AN043), LED RGB WS2812B, bo 4 lớp 1,0 mm 29,8 × 29,8 mm (anten nằm trong bo); cần chỉnh anten và tụ thạch anh khi có bo. Các mục dưới đây mô tả bản module.
+PCB thiết kế bằng KiCad 9, mỗi bo một thư mục trong **[`hardware/`](hardware/README.md)** (schematic, PCB đã đi dây, Gerber, BOM, file vị trí linh kiện; ERC và DRC sạch). Hai bo dùng chung các nguyên tắc sau; kích thước, tọa độ và bố trí từng bo trong README của bo.
 
-- PCB 2 lớp FR-4 1,6 mm, **29,8 × 23,9 mm**, không có lỗ bắt vít. Module ở mép trên, sát mép phải, **vùng anten (6 mm đầu module) chìa ra ngoài mép bo** → cả cụm **29,8 × 29,9 mm** (dưới 30 × 30 mm); không đồng, không đường mạch, không linh kiện dưới vùng anten (datasheet WROOM-02C, mục 11; ESP32-H2 Hardware Design Guidelines, *Positioning a Module on a Base Board*). Mặt phẳng GND hai lớp chạy tới sát mép bo ở chân anten.
-- **Pin CR2032 (vỏ kim loại) và đế pin ở mặt dưới, nằm dưới module và mạch; mép pin cách chân anten 3,4 mm** (bố trí 25 × 27 mm: 6,5 mm; 30 × 38 mm: ~16 mm). Đây là đánh đổi để cả cụm dưới 30 × 30 mm: pin nằm sau mặt phẳng GND, không nằm dưới anten, nhưng có thể làm giảm tầm phủ. Đo RSSI/LQI của parent khi đã lắp vỏ (checklist mục C); nếu link yếu, dùng lại bố trí 25 × 27 mm (commit `af26218`) hoặc 30 × 38 mm (commit `6649456`).
-- Mặt dưới, dưới pin chỉ có pad tiếp xúc âm Ø17,8 mm (GND); vành từ mép pad tới ngoài mép pin không có đồng (đường mạch, via, phủ đồng), vì mép vỏ pin là cực +.
-- TPS63900: C3 (VIN) và C4 (VOUT) sát chân trên lớp trên, L1 ngay dưới LX1/LX2, điện trở CFG sát chân; pad tản nhiệt nối chân GND 8 và hai via (TI: via trong pad là tùy chọn).
-- C1/C2 ngay sau Q1/JP1. Phủ đồng GND cả hai lớp, mỗi pad GND có via riêng.
-- SW1 ở giữa bo, ngay dưới module; R7/C8 (lọc RC) và R6 bên trái module cạnh chân GPIO10, đường nút đi trong lề trái của module xuống SW1. D1 bên phải nút (ống dẫn sáng).
-- 10 pad nạp/debug Ø1,5 mm ở mặt dưới: hai nhóm 2 × 2 ở hai góc trên (bước 2,54 × 2,7 mm), RX và VBAT bên phải đế pin (jig pogo-pin).
-- Chữ in: "Thread Button" ở mặt trên, "Made by Haxeko" và số rev ở mặt dưới.
+- PCB 2 lớp FR-4 1,6 mm, không có lỗ bắt vít. Module ở mép trên, sát mép phải, **vùng anten (6 mm đầu module) chìa ra ngoài mép bo**; không đồng, không đường mạch, không linh kiện dưới vùng anten (datasheet WROOM-02C, mục 11; ESP32-H2 Hardware Design Guidelines, *Positioning a Module on a Base Board*). Mặt phẳng GND hai lớp chạy tới sát mép bo ở chân anten.
+- Đế pin ở mặt dưới, mọi linh kiện khác ở mặt trên (lắp ráp một mặt), 10 pad nạp/debug Ø1,5 mm ở mặt dưới ngoài thân đế pin (jig pogo-pin).
+- TPS63900: C3 (VIN) và C4 (VOUT) sát chân trên lớp trên, L1 ngay dưới LX1/LX2, điện trở CFG sát chân; pad tản nhiệt nối chân GND 8 và hai via. Cùng bố trí và đường mạch trên cả hai bo.
+- C6, R4, C7, C8, R7, R6, R5 bên trái module cạnh chân của chúng; đường nút đi trong lề trái của module xuống SW1. D1 cạnh chân 15 (GPIO22).
+- Phủ đồng GND cả hai lớp, via khâu.
 
----
+| | `module-cr2450` | `module-cr123a` |
+|---|---|---|
+| Bo / cả cụm có anten | 37,4 × 30,5 / 37,4 × 36,5 mm | 42,4 × 27,5 / 42,4 × 33,5 mm |
+| Pin so với anten | pin Ø24,5 (vỏ kim loại) dưới module và mạch; mép pin cách chân anten **4,75 mm** | pin Ø17 trong đế nhựa, trục cách chân anten 16,5 mm, thân pin cách **8 mm** |
+| Mặt dưới | pad tiếp xúc âm Ø20 mm (GND); vành 10,05–12,6 mm quanh tâm pin không có đồng (mép vỏ pin là cực +); hai tai đế pin chặn hết bề ngang, mọi đường giữa nửa trên và nửa dưới đi ở mặt trên | thân đế nhựa, đi dây bên dưới được; hàng 4 lỗ (2 chân + 2 chốt Ø3,2 mm) ở y = 16,5 mm, ngay dưới module |
+| Đi dây | toàn bộ vẽ tay trong `design.py` (bố trí mặt trên lấy từ bo CR2032 cũ, đã kiểm chứng) | phần lớn vẽ tay, phần còn lại FreeRouting |
 
-### 2.8 Tụ bulk: 2 × 220 µF gốm hay 1 × 470 µF
+Pin nằm sau mặt phẳng GND, không nằm dưới anten, nhưng Espressif khuyến nghị khoảng trống ~15 mm quanh anten: đo RSSI/LQI của parent khi đã lắp vỏ (checklist mục C), nhất là với bo CR2450.
 
-Ghi lại phân tích ngày 2026-11-09, so với cảm biến nhiệt độ [haxeko/matter-temperature-sensor](https://github.com/haxeko/matter-temperature-sensor). Bo đó có cùng đường nguồn (CR2450 → P-MOSFET → TPS63900 3,3 V) nhưng dùng 10 µF + 2 × 100 µF + **470 µF**, phát +5 dBm và đặt giới hạn dòng vào TPS63900 100 mA. Toàn bộ là **[AS] mô phỏng**, chưa đo. Mô hình: `tools/capsim.py`, cùng phương trình với `hardware/analysis/power_model.py` của repo kia (pin OCV − I·R − hai phân cực, UVLO 1,75/1,65 V, ngưỡng reset ~2,93 V), thêm nhánh ESR cho tụ điện phân. Chạy `python3 tools/capsim.py` thì mô hình tái tạo đúng 9/9 kết quả trong bảng 4.1 của repo kia; `python3 tools/capsim_matrix.py tools` in lại các bảng dưới.
+### 2.8 Tụ bulk: 2 × 220 µF gốm hay 1 × 470 µF (bo CR2450), và vì sao bo CR123A chỉ cần 100 µF
+
+Ghi lại phân tích ngày 2026-11-09 (lúc đó cho bo CR2032 cũ; các dòng CR2032 đã bỏ, kết luận cho CR2450 giữ nguyên), so với cảm biến nhiệt độ [haxeko/matter-temperature-sensor](https://github.com/haxeko/matter-temperature-sensor). Bo đó có cùng đường nguồn (CR2450 → P-MOSFET → TPS63900 3,3 V) nhưng dùng 10 µF + 2 × 100 µF + **470 µF**, phát +5 dBm và đặt giới hạn dòng vào TPS63900 100 mA. Toàn bộ là **[AS] mô phỏng**, chưa đo. Mô hình: `tools/capsim.py`, cùng phương trình với `hardware/analysis/power_model.py` của repo kia (pin OCV − I·R − hai phân cực, UVLO 1,75/1,65 V, ngưỡng reset ~2,93 V), thêm nhánh ESR cho tụ điện phân. Chạy `python3 tools/capsim.py` thì mô hình tái tạo đúng 9/9 kết quả trong bảng 4.1 của repo kia; `python3 tools/capsim_matrix.py tools` in lại các bảng dưới.
 
 **So sánh loại tụ** (giá JLCPCB khi mua 10 con, tra 2026-11-09):
 
-| | 2 × 220 µF gốm (bo này) | 1 × 470 µF nhôm (KNSCHA RVT, C2901342) | 1 × 470 µF tantal MnO2 (AVX TAJD477K006, C7229) |
+| | 2 × 220 µF gốm (bo CR2450) | 1 × 470 µF nhôm (KNSCHA RVT, C2901342) | 1 × 470 µF tantal MnO2 (AVX TAJD477K006, C7229) |
 |---|---|---|---|
 | Điện dung thật ở 3 V | **~260 µF** (gốm mất ~40 % do điện áp DC) [AS] | **~470 µF** ±20 % | **~470 µF** ±10 % |
 | ESR | vài mΩ | ~0,6 Ω, ×3 khi −10 °C | ≤ 0,4 Ω |
@@ -288,8 +318,6 @@ Ghi lại phân tích ngày 2026-11-09, so với cảm biến nhiệt độ [hax
 
 | Thiết bị, sự kiện | 2×220 gốm (~265 µF) | 1×470 nhôm (~475 µF) | 2×100 + 470 (~555 µF, bo nhiệt) | 2×220 + 470 (~735 µF) |
 |---|---|---|---|---|
-| Nút CR2032, một lần nhấn, 25 °C | giữa đời | giữa đời | cuối đời, sát ngưỡng | cuối đời |
-| Nút CR2032, một lần nhấn, lạnh | pin mới ở 0 °C | giữa đời ở 0 °C, pin mới ở −10 °C | như cột 470 | giữa đời ở −10 °C |
 | Nút CR2450, một lần nhấn, 25 °C | giữa đời | **cuối đời** | cuối đời | cuối đời |
 | Nút CR2450, một lần nhấn, lạnh | giữa đời ở 0 °C | giữa đời ở −10 °C | giữa đời ở −10 °C | giữa đời ở −10 °C |
 | Nhiệt độ CR2450, một report, 25 °C | giữa đời | giữa đời | giữa đời | giữa đời (cuối đời cần ~1000 µF) |
@@ -297,35 +325,38 @@ Ghi lại phân tích ngày 2026-11-09, so với cảm biến nhiệt độ [hax
 
 Rút ra:
 
-- **Khởi động và nối lại Thread (1–2 s) không phụ thuộc tụ**: từ 265 lên 735 µF áp pin thấp nhất chỉ cao thêm 0,01–0,05 V; cứu được cần > 2 200–10 000 µF. Chỉ điện trở trong của pin quyết định (CR2450 hơn hẳn CR2032); firmware xử lý bằng boot guard và chính sách tạm dừng Thread.
+- **Khởi động và nối lại Thread (1–2 s) không phụ thuộc tụ**: từ 265 lên 735 µF áp pin thấp nhất chỉ cao thêm 0,01–0,05 V; cứu được cần > 2 200–10 000 µF. Chỉ điện trở trong của pin quyết định (CR2450 hơn hẳn CR2032, CR123A hơn hẳn CR2450); firmware xử lý bằng boot guard và chính sách tạm dừng Thread.
 - **ESR không quan trọng**: nhôm và tantal cho kết quả gần như nhau ở 25 °C, khi lạnh tantal hơn 0,05–0,1 V. Vài phần mười Ω là nhỏ so với 10–40 Ω điện trở trong của pin.
 - **Cái giá của tụ điện phân là rò**: ở ~60 µA trung bình, 1 µA rò ≈ −1,6 % tuổi pin, 3 µA ≈ −5 %, 10 µA ≈ −14 %. Với CR2450, thêm 470 µF cho các lần nhấn chạy tới cuối đời thay vì giữa đời: đáng nếu rò < ~3 µA.
+- **CR123A không cần tụ bulk**: `tools/capsim.py` có thêm kiểu pin CR123A (điện trở trong bằng 1/50 của CR2032 [AS], ~0,2 Ω khi mới, ~2 Ω khi cạn). Kết quả với 42,5 µF hiệu dụng (100 µF + 10 µF) và với chỉ 10 µF như nhau tới 0,01 V: áp pin thấp nhất 3,07 V (mới), 2,96 V (giữa đời), 2,82 V (cuối đời), 2,55 V (cạn), 2,65 V (cuối đời, −10 °C), khi khởi động, nhấn hay nối lại Thread. Tụ 100 µF chỉ để lọc gần đầu vào.
 - **Công suất phát quan trọng hơn tụ**: bo nhiệt độ hạ +5 dBm xuống 0 dBm có tác dụng ngang thêm ~300 µF; với 555 µF + 0 dBm, report chạy được tới cuối đời ở 25 °C. Giới hạn dòng vào 100 mA hầu như không đổi kết quả.
-- **Pha khởi động trong mô hình quá bi quan**: mô hình (hiệu chuẩn radio 45 mA × 100 ms) cho rằng CR2032 mới cũng reset lúc khởi động, nhưng bo này khởi động bằng CR2032 bình thường; 45 mA × 20 ms hoặc 35 mA × 100 ms thì qua. Cột khởi động chỉ đáng tin sau khi đo dòng khởi động thật.
+- **Pha khởi động trong mô hình quá bi quan**: mô hình (hiệu chuẩn radio 45 mA × 100 ms) cho rằng CR2032 mới cũng reset lúc khởi động, nhưng bo CR2032 cũ khởi động bằng CR2032 bình thường; 45 mA × 20 ms hoặc 35 mA × 100 ms thì qua. Cột khởi động chỉ đáng tin sau khi đo dòng khởi động thật.
 
 **Chọn:**
 
 | Thiết bị | Khuyến nghị |
 |---|---|
-| Nút bấm, cảm biến cửa (`../matter-door-sensor`) | **Giữ 2 × 220 µF gốm.** Muốn dư thêm khi pin gần hết hoặc lạnh (nhất là với CR2450): **hàn thêm** 470 µF song song (tantal MnO2 nếu cần mỏng, nhôm nếu vỏ đủ dày), không thay tụ gốm; đo rò theo checklist B5. Bo 25 × 27 mm chưa có footprint: tạm hàn vào TP9 (VBAT) và GND. Sản xuất nhiều và cần rẻ: 1 × 470 µF nhôm + 22 µF gốm tương đương hoặc hơn về điện, rẻ hơn ~1,2 USD/bo, đổi lại cao 7,7 mm và phải đo rò từng lô. |
+| Nút bấm, cảm biến cửa, bo `module-cr2450` | **Giữ 2 × 220 µF gốm.** Muốn dư thêm khi pin gần hết hoặc lạnh: **hàn thêm** 470 µF song song (tantal MnO2 nếu cần mỏng, nhôm nếu vỏ đủ dày), không thay tụ gốm; đo rò theo checklist B5. Bo chưa có footprint: tạm hàn vào TP9 (VBAT) và GND. Sản xuất nhiều và cần rẻ: 1 × 470 µF nhôm + 22 µF gốm tương đương hoặc hơn về điện, rẻ hơn ~1,2 USD/bo, đổi lại cao 7,7 mm và phải đo rò từng lô. |
+| Bo `module-cr123a` | **1 × 100 µF gốm** là đủ (dòng CR123A ở trên). |
 | Cảm biến nhiệt độ | **Giữ 470 µF** (bỏ đi chỉ còn ~85 µF). Thứ tự cải thiện: hạ TX xuống 0 dBm nếu sóng đủ; thay 2 × 100 µF bằng 2 × 220 µF (~735 µF); đo T-35 (sụt áp có tải của CR2450), T-39 (rò tụ 470 µF ở 3 V), T-33 (dòng khởi động). |
 
 ## 3. Sơ đồ nguyên lý và bảng kết nối
 
 ### 3.1 Sơ đồ nguyên lý
 
-![Sơ đồ nguyên lý nút CR2032](docs/schematic.png)
+![Sơ đồ nguyên lý nút Matter chạy pin](docs/schematic.png)
 
-Schematic KiCad (dùng cho PCB): [`hardware/docs/schematic.pdf`](hardware/docs/schematic.pdf). Bản vector của ảnh trên: [`docs/schematic.svg`](docs/schematic.svg). Ảnh được vẽ bằng `tools/schematic.py` (`pip install schemdraw matplotlib`, rồi `python3 tools/schematic.py`); sửa mạch thì sửa script và chạy lại. Cùng sơ đồ ở dạng văn bản:
+Schematic KiCad (dùng cho PCB), mỗi bo một bản: [`hardware/module-cr2450/docs/schematic.pdf`](hardware/module-cr2450/docs/schematic.pdf), [`hardware/module-cr123a/docs/schematic.pdf`](hardware/module-cr123a/docs/schematic.pdf). Hai bản chỉ khác BT1 và tụ bulk. Bản vector của ảnh trên: [`docs/schematic.svg`](docs/schematic.svg). Ảnh được vẽ bằng `tools/schematic.py` (`pip install schemdraw matplotlib`, rồi `python3 tools/schematic.py`); sửa mạch thì sửa script và chạy lại. Cùng sơ đồ ở dạng văn bản:
 
 ```
 NGUỒN
                           Q1 AO3401A (P-MOSFET, SOT-23)
-  BT1 CR2032 (+) ───────── D ┤├ S ──── JP1 ────┬──────────────┬──────────────┬─────────────── VBAT
-  Keystone 3034             G                  │              │              │
-  BT1 (−) ── GND            └── GND            C1 220µF       C2 220µF       C3 10µF (sát U2)
-                                               │ 1210 X5R     │              │
+  BT1 (+) ──────────────── D ┤├ S ──── JP1 ────┬──────────────┬──────────────┬─────────────── VBAT
+  CR2450: Keystone 3008     G                  │              │              │
+  CR123A: Bulgin BX0123     └── GND            C1             C2             C3 10µF (sát U2)
+  BT1 (−) ── GND                               │              │              │
                                               GND            GND            GND
+  C1, C2: bo CR2450 2 × 220µF 1210 X5R; bo CR123A chỉ C1 100µF 1206 X5R (không có C2)
 
                        U2 TPS63900DSKR (WSON-10)
   VBAT ──┬──────────── 10 VIN                  LX1 9 ───┐
@@ -395,7 +426,7 @@ PAD NẠP / ĐO
 | Net | Thành phần |
 |---|---|
 | BAT+ | BT1 (+), Q1 D |
-| VBAT | Q1 S (qua JP1), C1, C2, C3, U2 VIN/EN/SEL, R9, TP9 |
+| VBAT | Q1 S (qua JP1), C1, C2 (bo CR2450), C3, U2 VIN/EN/SEL, R9, TP9 |
 | 3V3 | U2 VOUT (qua JP2), C4 (phía U2), C5, C6, U1.1, R4, R5, R6, TP1 |
 | GND | BT1 (−), Q1 G, C1–C9, U2 GND/pad, R1, R2, R3, SW1, D1 cathode, U1.9/13/29, TP2 |
 | EN | U1.2, R4, C7 (DNP), TP5 |
@@ -420,7 +451,8 @@ PAD NẠP / ĐO
 | U2 | 1 | Buck-boost 3,3 V, Iq 75 nA | **TPS63900DSKR** (TI) | C1518762 (Extended) | WSON-10 2,5 × 2,5 mm | |
 | L1 | 1 | 2,2 µH, I_sat 3 A, 70 mΩ | **DFE252012P-2R2M=P2** (Murata) | C391305 (Extended) | 2520 (1008) | Bảng 8-5 datasheet TPS63900 dùng DFE252012F-2R2M (cùng kích thước) |
 | Q1 | 1 | P-MOSFET −30 V, V_GS(th) ≤ 1,3 V, 85 mΩ ở −2,5 V | **AO3401A** (Alpha & Omega) | C15127 (Basic) | SOT-23 (1 G, 2 S, 3 D) | chống ngược cực |
-| C1, C2 | 2 | 220 µF 6,3 V X5R | **GRM32ER60J227ME05L** (Murata) | C469553 (Extended) | 1210 | tụ bulk; thay được bằng Samsung CL32A227MQVNNNE (C400951) |
+| C1, C2 (bo CR2450) | 2 | 220 µF 6,3 V X5R | **GRM32ER60J227ME05L** (Murata) | C469553 (Extended) | 1210 | tụ bulk; thay được bằng Samsung CL32A227MQVNNNE (C400951) |
+| C1 (bo CR123A) | 1 | 100 µF 6,3 V X5R | **CL31A107MQHNNNE** (Samsung) | C15008 | 1206 | lọc đầu vào; CR123A không cần dàn tụ bulk (mục 2.8) |
 | C3, C5 | 2 | 10 µF 10 V X5R | **CL10A106KP8NNNC** (Samsung) | C19702 (Basic) | 0603 | vào TPS63900; 3V3 module |
 | C4 | 1 | 22 µF 6,3 V X5R | **CL10A226MQ8NRNC** (Samsung) | C59461 (Basic) | 0603 | ra TPS63900 |
 | C6, C9 | 2 | 100 nF 16 V X7R | CL05B104KO5NNNC (Samsung) | C1525 (Basic) | 0402 | |
@@ -433,12 +465,13 @@ PAD NẠP / ĐO
 | R7, R8 | 2 | 1 kΩ 1 % | 0402WGF1001TCE (UNI-ROYAL) | C11702 (Basic) | 0402 | nút, LED |
 | SW1 | 1 | Nút nhấn SMD, lực nhấn 160 gf, cao 2,5 mm | **PTS810 SJM 250 SMTR LFS** (C&K) | C116501 (Extended) | 4,2 × 3,2 mm | đổi theo cơ khí vỏ; bản SJG (400 gf) cứng hơn |
 | D1 | 1 | LED đỏ | **KT-0603R** (Hubei KENTO) | C2286 (Basic) | 0603 | |
-| BT1 | 1 | Đế pin CR2032 SMD | **3034** (Keystone) | — (hàn tay) | SMD, mặt dưới | đế khác (BU2032SM-HD-G…) cần đổi footprint |
-| — | 1 | Pin CR2032 | Panasonic / Energizer / Murata CR2032 | | | dùng hãng có tên tuổi (SWRA349: pin không tên chỉ đạt ~50 % dung lượng khi tải xung) |
+| BT1 (bo CR2450) | 1 | Đế pin CR2450 SMD | **3008** (Keystone) | — (hàn tay) | SMD, mặt dưới, 2 tai cách 30,6 mm | đế khác cần đổi footprint |
+| BT1 (bo CR123A) | 1 | Đế pin CR123A xuyên lỗ | **BX0123** (Bulgin) | — (hàn tay) | THT, mặt dưới, 2 chân cách 37,8 mm + 2 chốt Ø3,2 mm | đế khác (MPD BH123A, Keystone…) cần đổi footprint |
+| — | 1 | Pin CR2450 hoặc CR123A | Panasonic / Energizer / Murata / Maxell | | | dùng hãng có tên tuổi (SWRA349: pin không tên chỉ đạt ~50 % dung lượng khi tải xung); không dùng pin sạc RCR123A 3,7 V |
 | JP1, JP2 | 2 | Cầu hàn 2 pad | — | | PCB | đo dòng |
 | TP1–TP10 | 10 | Pad thử | — | | PCB | |
 
-Mã linh kiện chọn theo thư viện lắp ráp của JLCPCB: dùng loại **Basic** (không tốn phí nạp linh kiện) khi có loại đạt thông số; còn **5 loại Extended** (U2, L1, C1/C2, R1, SW1), mỗi loại tốn phí nạp riêng. U1 và BT1 không có ở LCSC: không có trong `hardware/fab/bom-jlcpcb.csv` / `cpl-jlcpcb.csv`, hàn tay sau (mục lắp ráp trong [`hardware/README.md`](hardware/README.md)).
+Mã linh kiện chọn theo thư viện lắp ráp của JLCPCB: dùng loại **Basic** (không tốn phí nạp linh kiện) khi có loại đạt thông số; bo CR2450 còn **5 loại Extended** (U2, L1, C1/C2, R1, SW1), bo CR123A 4 loại (U2, L1, R1, SW1) cộng C1 C15008 (kiểm tra loại khi đặt), mỗi loại Extended tốn phí nạp riêng. U1 và BT1 không có ở LCSC: không có trong `hardware/<bo>/fab/bom-jlcpcb.csv` / `cpl-jlcpcb.csv`, hàn tay sau (mục lắp ráp trong README của bo). BOM tiếng Việt kèm từ khóa tìm mua: `hardware/<bo>/fab/bom-vi.csv`.
 
 Điện trở CFG của TPS63900 phải là loại ±1 %, TCR ≤ ±200 ppm (R1 FOJAN FRC0402: ±1 %, ±100 ppm; R2, R3 là 0 Ω). Tất cả tụ đều là MLCC: không dùng tantalum/điện phân vì rò.
 
@@ -511,7 +544,7 @@ Hỗ trợ của controller (tới 10/2026):
 
 **Chính sách LIT/SIT (bản `lit`, `main/power.cpp`):** thiết bị yêu cầu SIT (`NotifySITModeRequestNotification`) cho tới khi **mọi** fabric đều đã đăng ký Check-In client; khi đó mới rút yêu cầu và chạy LIT. Một fabric Apple Home (không đăng ký Check-In) trong Multi-Admin giữ thiết bị ở SIT, nên Apple vẫn thấy thiết bị bình thường. Chính sách được đánh giá lại khi thêm/xoá fabric, khi controller đăng ký/huỷ Check-In client (sự kiện `kTableUpdated` của ICD Management) và mỗi lần vào Active.
 
-**Khuyến nghị:** dùng **SIT (mặc định)** khi có Apple Home hoặc nhiều hệ. Dùng **`lit`** khi chỉ dùng Home Assistant và đã bật Battery Saving trong Matter Server add-on: +35 % tuổi pin (4,0 → 5,4 tháng ở 20 lần nhấn/ngày), đổi lại mỗi lần nhấn tốn gấp đôi (Active tối thiểu 5 s) và lệnh từ HA tới nút chậm tới 2 phút.
+**Khuyến nghị:** dùng **SIT (mặc định)** khi có Apple Home hoặc nhiều hệ. Dùng **`lit`** khi chỉ dùng Home Assistant và đã bật Battery Saving trong Matter Server add-on: +35 % tuổi pin (20 lần nhấn/ngày: CR2450 11,2 → 15,0 tháng, CR123A 30,4 → 40,7 tháng), đổi lại mỗi lần nhấn tốn gấp đôi (Active tối thiểu 5 s) và lệnh từ HA tới nút chậm tới 2 phút.
 
 ### 5.5 Mất parent / mất Border Router
 
@@ -532,7 +565,7 @@ Sự kiện nhấn trong lúc mất mạng: vẫn được ghi vào bộ đệm 
 
 ### 5.6 Công suất phát
 
-Driver 802.15.4 của ESP-IDF khởi tạo bảng công suất ở **mức tối đa (+20 dBm, 140 mA)** và OpenThread không bao giờ hạ xuống. Thiết bị đã ghép nối gửi Child Update Request tới parent cũ **0–25 ms** sau khi Thread khởi động (OpenThread `PrevRoleRestorer`), thường trước khi `app_main()` kịp lấy khoá OpenThread. Một khung +20 dBm rút ~180 mA từ pin: đủ làm brownout một CR2032 đã dùng một nửa, ở **mỗi lần khởi động**. Firmware vì vậy bọc `esp_ieee802154_enable()` bằng linker wrap (`main/CMakeLists.txt`: `-Wl,--wrap=esp_ieee802154_enable`) để đặt `THREAD_TX_POWER_DBM` ngay sau khi driver khởi tạo, rồi đặt lại sau mỗi lần attach.
+Driver 802.15.4 của ESP-IDF khởi tạo bảng công suất ở **mức tối đa (+20 dBm, 140 mA)** và OpenThread không bao giờ hạ xuống. Thiết bị đã ghép nối gửi Child Update Request tới parent cũ **0–25 ms** sau khi Thread khởi động (OpenThread `PrevRoleRestorer`), thường trước khi `app_main()` kịp lấy khoá OpenThread. Một khung +20 dBm rút ~180 mA từ pin: đủ làm brownout một pin cúc áo CR2450 đã dùng quá nửa (CR123A thì chịu được), ở **mỗi lần khởi động**. Firmware vì vậy bọc `esp_ieee802154_enable()` bằng linker wrap (`main/CMakeLists.txt`: `-Wl,--wrap=esp_ieee802154_enable`) để đặt `THREAD_TX_POWER_DBM` ngay sau khi driver khởi tạo, rồi đặt lại sau mỗi lần attach.
 
 0 dBm với anten PCB của WROOM-02C là đủ trong nhà khi có một router Thread (thiết bị cắm điện) trong ~10 m. Nếu link yếu (RSSI parent < −85 dBm, thấy trong log `id_diag`), tăng lên 3–6 dBm trước khi tăng tới 9 dBm (60 mA, chỉ chịu được khi pin còn mới).
 
@@ -673,21 +706,22 @@ Log: `switch: Press: Thread attached|DETACHED, N subscription(s) established` �
 ### 7.1 Cấu trúc thư mục
 
 ```
-matter-button-cr2032/
+firmware/                           dự án ESP-IDF, chung cho mọi bo trong hardware/
 ├── CMakeLists.txt                  dự án esp-matter (esp32h2), phiên bản theo giờ build, file firmware đầy đủ mang tên phiên bản
 ├── partitions.csv                  4 MB: nvs 48 KB, 2 × OTA 1,875 MB, fctry 24 KB (0x3E0000)
-├── sdkconfig.defaults              chung: Light-sleep/PM, ICD SIT, BLE tối giản, OTA + rollback, brownout, bỏ cluster thừa
+├── sdkconfig.defaults              chung: Light-sleep/PM, ICD SIT, BLE tối giản, OTA + rollback, brownout, bỏ cluster thừa;
+│                                   bo mặc định module-cr2450 (Kconfig BATTERY_CR2450)
 ├── sdkconfig.defaults.esp32h2      OpenThread MTD (SED), SRP client, chỉ IPv6
+├── sdkconfig.defaults.cr123a       bo module-cr123a: pin CR123A (BatIECDesignation, dung lượng, chuỗi phiên bản phần cứng)
 ├── sdkconfig.defaults.lit          ICD LIT + Check-In + UAT + DSLS (Home Assistant)
 ├── sdkconfig.defaults.unique_setup mã ghép nối riêng từng bo
 ├── sdkconfig.defaults.factory      factory data (DAC riêng từng bo) từ esp-matter-mfg-tool
 ├── sdkconfig.defaults.debug        CHIP shell + OpenThread CLI, không Light-sleep
 ├── sdkconfig.defaults.pmdiag       chẩn đoán dòng ngủ: vẫn Light-sleep, id_diag 10 phút/lần kèm khoá esp_pm và % thời gian ngủ
-├── sdkconfig.defaults.chip         bo chip (hardware-chip/): RTC từ thạch anh 32,768 kHz, LED RGB WS2812B
 ├── dependencies.lock               phiên bản cố định của managed components
 ├── main/
 │   ├── CMakeLists.txt              + linker wrap esp_ieee802154_enable (công suất phát từ khung đầu tiên)
-│   ├── Kconfig.projbuild           menu Button / Matter Switch / Power and Thread / Battery / Status LED / ...
+│   ├── Kconfig.projbuild           menu Button / Matter Switch / Power and Thread / Battery (loại pin = bo) / Status LED / ...
 │   ├── chip_project_config.h       kích thước pool observer của ICD manager
 │   ├── app_main.cpp                khởi tạo, node Matter, sự kiện thiết bị, xác nhận OTA, Identify
 │   ├── button_fsm.h/.cpp           máy trạng thái cử chỉ (thuần C++17, có host test)
@@ -696,18 +730,23 @@ matter-button-cr2032/
 │   ├── gesture_replay.h/.cpp       gửi lại cử chỉ chưa tới được controller (thuần C++17, có host test; mục 6.7)
 │   ├── power.h/.cpp                esp_pm, công suất phát, child timeout/supervision, chính sách mất mạng, LIT/SIT
 │   ├── battery.h/.cpp              đo pin, đo điện trở trong, cluster Power Source, boot guard, lưu giá trị đã báo (NVS)
+│   ├── battery_gauge.h/.cpp        % pin: đếm điện tích, giới hạn theo áp (thuần C++17, có host test)
 │   ├── battery_report.h/.cpp       khi nào % pin tăng/giảm (thuần C++17, có host test)
-│   ├── status_led.h/.cpp           LED nháy ngắn (LED thường, hoặc LED RGB WS2812B qua RMT có cắt nguồn), khoá Light-sleep chỉ khi LED sáng
+│   ├── status_led.h/.cpp           LED nháy ngắn (LED thường; tùy chọn LED RGB WS2812B qua RMT có cắt nguồn), khoá Light-sleep chỉ khi LED sáng
 │   ├── device_info.h/.cpp          nhà sản xuất, model, phần cứng, serial = MAC eFuse
 │   ├── setup_code.h/.cpp           in QR; mã ghép nối riêng từng bo (unique_setup)
 │   ├── identity_diag.h/.cpp        log id_diag: danh tính, Thread, SRP, fabric, subscription, khoá esp_pm / thời gian ngủ
 │   └── thread_diag.h/.cpp          log Thread/SRP khi chưa ghép nối
-├── test/host/                      host test máy trạng thái nút (17 kịch bản) và cách báo % pin, chỉ cần g++
-├── tools/battery_model.py          mô hình pin (bảng mục 9)
-├── tools/capsim.py, capsim_matrix.py  mô phỏng tụ bulk: 2 × 220 µF gốm hay 470 µF (mục 2.8)
-├── tools/schematic.py              vẽ sơ đồ nguyên lý (schemdraw) → docs/schematic.svg / .png
-└── docs/                           schematic.svg / .png (sơ đồ nguyên lý), test-checklist.md
+└── test/host/                      host test máy trạng thái nút (17 kịch bản), gửi lại cử chỉ, cách báo % pin; chỉ cần g++
+
+tools/
+├── battery_model.py                mô hình pin cho từng loại pin của các bo (bảng mục 9)
+├── capsim.py, capsim_matrix.py     mô phỏng tụ bulk: 2 × 220 µF gốm hay 470 µF, CR123A (mục 2.8)
+├── schematic.py                    vẽ sơ đồ nguyên lý (schemdraw) → docs/schematic.svg / .png
+└── matter-mfg/                     PKI test, factory data riêng từng bo (bản factory)
 ```
+
+**Thêm bo mới** (pin khác): [`hardware/README.md`](hardware/README.md#thêm-một-bo-mới-pin-khác-bố-trí-khác). Phía firmware: thêm một mục vào `choice BATTERY_TYPE` (`firmware/main/Kconfig.projbuild`: tên IEC, mô tả thay pin, dung lượng, chuỗi phiên bản phần cứng) và một file `sdkconfig.defaults.<bo>` chọn nó; logic đo pin dùng chung cho mọi pin Li-MnO2.
 
 ### 7.2 Mô hình dữ liệu Matter
 
@@ -727,7 +766,7 @@ matter-button-cr2032/
 
 ### 7.4 Pin yếu
 
-Mục [2.5](#25-đo-pin-gần-như-không-tốn-dòng). Tóm tắt: số đo lúc khởi động không được báo (sau khi lắp lại pin báo giá trị lần trước, lưu trong NVS); đo nghỉ khi radio đã yên 10 phút; % giảm chỉ khi 3 lần đo liên tiếp đều thấp. Power Source (`BatVoltage`, `BatPercentRemaining`, `BatChargeLevel`, `BatReplacementNeeded`, `BatIECDesignation` = "CR2032", `BatApprovedChemistry` = LiMnO2, `BatCapacity` = 220 mAh); LED nháy 2 lần sau mỗi cử chỉ khi pin không OK; huỷ tải OTA khi pin không OK (`CancelImageUpdate()`); Deep-sleep khi khởi động với pin quá yếu. Thuộc tính chỉ được cập nhật khi đổi ≥ 20 mV để không sinh report thừa.
+Mục [2.5](#25-đo-pin-gần-như-không-tốn-dòng). Tóm tắt: số đo lúc khởi động không được báo (sau khi lắp lại pin báo giá trị lần trước, lưu trong NVS); đo nghỉ khi radio đã yên 10 phút; % giảm chỉ khi 3 lần đo liên tiếp đều thấp. Power Source (`BatVoltage`, `BatPercentRemaining`, `BatChargeLevel`, `BatReplacementNeeded`, `BatIECDesignation` = "CR2450" (bo CR123A: "CR17345"), `BatApprovedChemistry` = LiMnO2, `BatCapacity` = 620 mAh (1500 mAh), mô tả thay pin "CR2450 3V lithium coin cell" / "CR123A 3V lithium cell"); LED nháy 2 lần sau mỗi cử chỉ khi pin không OK; huỷ tải OTA khi pin không OK (`CancelImageUpdate()`); Deep-sleep khi khởi động với pin quá yếu. Thuộc tính chỉ được cập nhật khi đổi ≥ 20 mV để không sinh report thừa.
 
 ### 7.5 Factory reset
 
@@ -742,7 +781,7 @@ Factory reset xoá fabric, thông tin mạng Thread, cấu hình (NVS) rồi m�
 
 ### 7.6 Commissioning
 
-- **Chưa ghép nối:** sau khi lắp pin, cửa sổ ghép nối BLE + DNS-SD mở **15 phút**, LED nháy 40 ms mỗi 3 s. Hết giờ mà chưa ghép → **thiết bị ngủ sâu (Deep-sleep, ~7 µA)**; nhấn nút → khởi động lại và mở cửa sổ 15 phút mới. Lý do: khi BLE còn bật (esp-matter chỉ tắt BLE sau khi đã có fabric), đồng hồ ngủ của BLE là thạch anh 32 MHz chính (bản module không có thạch anh 32 kHz, `CONFIG_BT_LE_LP_CLK_SRC_MAIN_XTAL`) nên Light-sleep tốn **~4 mA** thay vì ~25 µA (bảng trong README `examples/bluetooth/nimble/power_save` của ESP-IDF: ESP32-H2 light sleep với main XTAL 4,0 mA, với thạch anh 32 kHz 24 µA). Một đêm chưa ghép nối ở Light-sleep tốn ~40–50 mAh, một phần tư viên CR2032. `CONFIG_APP_UNCOMMISSIONED_DEEP_SLEEP` (mặc định bật; bản debug tắt để giữ console). Bo chip (`hardware-chip/`, có thạch anh 32 kHz) không bị vấn đề này nhưng vẫn ngủ sâu cho tiết kiệm.
+- **Chưa ghép nối:** sau khi lắp pin, cửa sổ ghép nối BLE + DNS-SD mở **15 phút**, LED nháy 40 ms mỗi 3 s. Hết giờ mà chưa ghép → **thiết bị ngủ sâu (Deep-sleep, ~7 µA)**; nhấn nút → khởi động lại và mở cửa sổ 15 phút mới. Lý do: khi BLE còn bật (esp-matter chỉ tắt BLE sau khi đã có fabric), đồng hồ ngủ của BLE là thạch anh 32 MHz chính (bản module không có thạch anh 32 kHz, `CONFIG_BT_LE_LP_CLK_SRC_MAIN_XTAL`) nên Light-sleep tốn **~4 mA** thay vì ~25 µA (bảng trong README `examples/bluetooth/nimble/power_save` của ESP-IDF: ESP32-H2 light sleep với main XTAL 4,0 mA, với thạch anh 32 kHz 24 µA). Một đêm chưa ghép nối ở Light-sleep tốn ~40–50 mAh, gần một phần mười viên CR2450. `CONFIG_APP_UNCOMMISSIONED_DEEP_SLEEP` (mặc định bật; bản debug tắt để giữ console).
 - **Đã ghép nối, thêm hệ thứ hai (Multi-Admin):** ưu tiên chức năng chia sẻ của hệ đang quản lý (Apple Home: *Bật chế độ ghép nối*; HA: *Share device*). Hoặc **giữ nút 10 s** rồi nhả → mở cửa sổ 15 phút với mã gốc, chỉ qua Thread/DNS-SD (BLE đã tắt sau lần ghép đầu, `CONFIG_USE_BLE_ONLY_FOR_COMMISSIONING`).
 - Khi cửa sổ ghép nối mở, ICD giữ Active (poll 200 ms): mỗi cửa sổ 15 phút tốn ~1,1 C (~0,4 mAh từ pin). Đóng sớm bằng cách ghép xong.
 
@@ -767,23 +806,24 @@ Matter OTA Requestor, hỏi provider **1 lần/ngày** (`APP_OTA_QUERY_INTERVAL_
 | *Battery* `BATTERY_SENSE_GPIO`, `BATTERY_SENSE_RATIO_X1000` | 1, 1000 | chân đo, tỷ lệ chia (1000 = không chia) |
 | `BATTERY_MEASURE_INTERVAL_H` / `BATTERY_TEST_INTERVAL_H` / `BATTERY_TEST_LOAD_MS` | 12 / 24 / 500 | đo nghỉ, đo có tải |
 | `BATTERY_QUIET_MIN` / `BATTERY_DROP_CONFIRM_COUNT` / `BATTERY_CONFIRM_INTERVAL_MIN` | 10 / 3 / 60 | radio phải yên bao lâu trước khi đo nghỉ; số lần đo thấp liên tiếp để áp báo giảm (1 = báo mọi lần); chu kỳ đo xác nhận |
-| `BATTERY_CR2032` / `BATTERY_CR2450`, `BATTERY_CAPACITY_MAH` | CR2032, 220 (CR2450: 620) | loại pin, dung lượng danh định |
+| `BATTERY_CR2450` / `BATTERY_CR123A`, `BATTERY_CAPACITY_MAH` | CR2450, 620 (CR123A: 1500) | loại pin = bo (`sdkconfig.defaults.cr123a`), dung lượng danh định |
 | `BATTERY_MODEL_AVG_UA` / `BATTERY_MODEL_FLOOR_PERCENT` | 60 / 20 | dòng trung bình mô hình; % thấp nhất phép đếm tự báo, dưới đó chỉ theo áp (mục 2.5) |
 | `BATTERY_WARNING_REST_MV` / `CRITICAL_REST_MV` / `WARNING_BURST_MV` / `CRITICAL_BURST_MV` | 2750 / 2600 / 2200 / 1950 | ngưỡng mức pin |
 | `BATTERY_BOOT_MIN_MV`, `BATTERY_BROWNOUT_LIMIT`, `BATTERY_RECOVERY_SLEEP_S` | 2200, 3, 3600 | boot guard |
 | *Status LED* `STATUS_LED_GPIO` / `STATUS_LED_PRESS_FEEDBACK` | 22 / n | −1 = không có LED; nháy 20 ms mỗi lần nhấn |
-| `STATUS_LED_WS2812`, `_DATA_GPIO`, `_POWER_GPIO`, `_POWER_ON_LEVEL`, `_BRIGHTNESS` | n, 12, 11, 0, 40 | LED RGB của bo chip: dữ liệu GPIO12, nguồn LED qua MOSFET từ GPIO11 (mức thấp = bật), độ sáng 40/255; màu theo trạng thái: ghép nối xanh dương, Identify trắng, chờ reset lúc khởi động vàng, giữ để reset đỏ, pin yếu cam, nhấn xanh lá |
+| `STATUS_LED_WS2812`, `_DATA_GPIO`, `_POWER_GPIO`, `_POWER_ON_LEVEL`, `_BRIGHTNESS` | n, 12, 11, 0, 40 | LED RGB, không có trên các bo hiện tại (giữ cho bản phần cứng sau; bo chip cũ dùng nó): dữ liệu GPIO12, nguồn LED qua MOSFET từ GPIO11 (mức thấp = bật), độ sáng 40/255; màu theo trạng thái: ghép nối xanh dương, Identify trắng, chờ reset lúc khởi động vàng, giữ để reset đỏ, pin yếu cam, nhấn xanh lá |
 | *Identity Diagnostics* `IDENTITY_DIAG_PERIOD_SEC` | 86400 | log id_diag 1 lần/ngày (debug: 300 s, pmdiag: 600 s); khối đầy đủ kết thúc bằng các dòng `pm` (khoá esp_pm; với `CONFIG_PM_PROFILING` thêm thời gian giữ và % Light-sleep) |
-| *Device Identity* | Haxeko / Matter Button / ESP32-H2-WROOM-02C CR2032 v1.0 | Basic Information |
+| *Device Identity* | Haxeko / Matter Button / ESP32-H2-WROOM-02C CR2450 v1.0 (bo CR123A: … CR123A v1.0) | Basic Information |
 
 ### 7.9 Host test
 
 ```bash
-test/host/run.sh      # g++ -std=gnu++17 -Wall -Wextra -Werror; 17 kịch bản: đơn, đúp, ba, giữ, 999 ms, giữ 12/25/45 s,
-                      # nhiễu, nhả sát mốc 1 s, poll trễ, nút đang giữ lúc khởi động, tắt nhấn đúp, ...
-                      # + gửi lại cử chỉ (gesture_replay): không ai nghe, đang priming, report bị từ chối / hết giờ,
-                      #   đã xác nhận thì không gửi lại, hết hạn, cử chỉ mới thay cử chỉ chờ, giữ lâu
-                      # + cách báo % pin: giữ giá trị đã lưu, tăng báo ngay, giảm sau 3 lần đo thấp liên tiếp
+firmware/test/host/run.sh   # g++ -std=gnu++17 -Wall -Wextra -Werror; 17 kịch bản: đơn, đúp, ba, giữ, 999 ms, giữ 12/25/45 s,
+                            # nhiễu, nhả sát mốc 1 s, poll trễ, nút đang giữ lúc khởi động, tắt nhấn đúp, ...
+                            # + gửi lại cử chỉ (gesture_replay): không ai nghe, đang priming, report bị từ chối / hết giờ,
+                            #   đã xác nhận thì không gửi lại, hết hạn, cử chỉ mới thay cử chỉ chờ, giữ lâu
+                            # + cách báo % pin: giữ giá trị đã lưu, tăng báo ngay, giảm sau 3 lần đo thấp liên tiếp
+                            # + % pin (battery_gauge): đếm điện tích CR2450 và CR123A, giới hạn theo áp, pin mới
 ```
 
 ---
@@ -806,11 +846,15 @@ git clone https://github.com/haxeko/h2-thread-button.git
 cd h2-thread-button
 $repo = git rev-parse --show-toplevel
 $img  = "espressif/esp-matter:release-v1.6.1_idf_v6.0.2"
-$proj = "/repo"
-$pre  = "git config --global --add safe.directory /repo && cd $proj"
+$pre  = "git config --global --add safe.directory '*' && cd /repo/firmware"
 
-# Bản mặc định: ICD SIT (Apple Home + Home Assistant)
+# Bản mặc định: bo module-cr2450, ICD SIT (Apple Home + Home Assistant)
 docker run --rm -v "${repo}:/repo" $img bash -c "$pre && { [ -f sdkconfig ] || idf.py set-target esp32h2; } && idf.py build"
+
+# Bo module-cr123a (pin CR123A): BatIECDesignation CR17345, dung lượng 1500 mAh, chuỗi phiên bản phần cứng (mục 2.5).
+# Ghép được với các biến thể khác, đặt file của bo ở cuối:
+#   SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.lit;sdkconfig.defaults.cr123a'
+docker run --rm -v "${repo}:/repo" $img bash -c "$pre && idf.py -B build-cr123a -D IDF_TARGET=esp32h2 -D SDKCONFIG=sdkconfig.cr123a -D SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.cr123a' build"
 
 # Bản LIT (chỉ Home Assistant có Battery Saving)
 docker run --rm -v "${repo}:/repo" $img bash -c "$pre && idf.py -B build-lit -D IDF_TARGET=esp32h2 -D SDKCONFIG=sdkconfig.lit -D SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.lit' build"
@@ -818,13 +862,6 @@ docker run --rm -v "${repo}:/repo" $img bash -c "$pre && idf.py -B build-lit -D 
 # Mã ghép nối riêng từng bo (nên dùng khi có nhiều nút); ghép được với LIT:
 #   SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.lit;sdkconfig.defaults.unique_setup'
 docker run --rm -v "${repo}:/repo" $img bash -c "$pre && idf.py -B build-unique -D IDF_TARGET=esp32h2 -D SDKCONFIG=sdkconfig.unique -D SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.unique_setup' build"
-
-# Bo chip (hardware-chip/: chip ESP32-H2, thạch anh 32,768 kHz, LED RGB WS2812B); ghép được với LIT bằng cách đặt
-#   sdkconfig.defaults.chip ở cuối: SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.lit;sdkconfig.defaults.chip'
-docker run --rm -v "${repo}:/repo" $img bash -c "$pre && idf.py -B build-chip -D IDF_TARGET=esp32h2 -D SDKCONFIG=sdkconfig.chip -D SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.chip' build"
-
-# Pin CR2450 (620 mAh, cùng mạch, đế CR2450): BatIECDesignation, dung lượng, % pin (mục 2.5)
-docker run --rm -v "${repo}:/repo" $img bash -c "$pre && idf.py -B build-cr2450 -D IDF_TARGET=esp32h2 -D SDKCONFIG=sdkconfig.cr2450 -D SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.cr2450' build"
 
 # Bản chẩn đoán dòng ngủ: như bản mặc định (vẫn Light-sleep) + bộ đếm esp_pm; mỗi 10 phút log id_diag in các khoá PM
 # (khoá nào giữ chip thức, bao lâu) và % thời gian ở Light-sleep. Dùng khi pin tụt nhanh hơn dự tính.
@@ -834,15 +871,17 @@ docker run --rm -v "${repo}:/repo" $img bash -c "$pre && idf.py -B build-pmdiag 
 docker run --rm -v "${repo}:/repo" $img bash -c "$pre && idf.py -B build-debug -D IDF_TARGET=esp32h2 -D SDKCONFIG=sdkconfig.debug -D SDKCONFIG_DEFAULTS='sdkconfig.defaults;sdkconfig.defaults.debug' build"
 ```
 
-Sau khi sửa `sdkconfig.defaults*`, xoá file `sdkconfig*` tương ứng (`sdkconfig`, `sdkconfig.lit`, …) để áp dụng lại. Kích thước đã build: mặc định 1,33 MB, LIT ~1,35 MB, debug 1,45 MB, unique_setup 1,34 MB, factory 1,33 MB, chip 1,35 MB; phân vùng OTA 1,875 MB (còn ≥ 23 %).
+Mọi lệnh chạy trong `firmware/`; các thư mục `build*/` và file `sdkconfig*` sinh ra nằm ở đó (đã git-ignore). Sau khi sửa `sdkconfig.defaults*`, xoá file `sdkconfig*` tương ứng (`sdkconfig`, `sdkconfig.lit`, …) để áp dụng lại. Kích thước đã build: mặc định 1,33 MB, LIT ~1,35 MB, debug 1,45 MB, unique_setup 1,34 MB, factory 1,33 MB, cr123a như mặc định; phân vùng OTA 1,875 MB (còn ≥ 23 %).
 
-| File trong `build*/` | Dùng để |
+| File trong `firmware/build*/` | Dùng để |
 |---|---|
 | `matter_button_h2-<phiên bản>.bin` | nạp một lần ở `0x0` (bootloader + bảng phân vùng + app); xoá NVS → phải ghép nối lại; giữ `fctry` |
 | `matter_button_h2.bin` + `flash_args` | nạp bằng `write-flash "@flash_args"`, giữ ghép nối |
 | `matter_button_h2-ota.bin` | Matter OTA |
 
-GitHub Actions (`.github/workflows/matter-button-h2-cr2032.yml`) chạy host test, mô hình pin và build ba bản: mặc định, `lit` và `chip`; artifact `matter_button_h2-<phiên bản>`, `matter_button_h2-<phiên bản>-lit` và `matter_button_h2-<phiên bản>-chip`.
+**Firmware phải khớp bo**: nạp bản `cr123a` cho bo CR123A. Nạp nhầm thì nút vẫn chạy, chỉ sai loại pin, dung lượng và % pin báo cho controller.
+
+GitHub Actions (`.github/workflows/build.yml`) chạy host test và mô hình pin, ERC + DRC cho từng bo trong `hardware/` (Docker image `kicad/kicad:9.0`), và build ba bản firmware: mặc định (CR2450), `lit` và `cr123a`; artifact `matter_button_h2-<phiên bản>`, `…-lit` và `…-cr123a`.
 
 ### 8.3 Nạp firmware
 
@@ -855,10 +894,10 @@ Bo không có cổng USB-UART: dùng bộ chuyển USB-UART **3,3 V** (CP2102N, 
 | RXD | TP3 TXD0 |
 | (ESP-Prog) EN / IO0 | TP5 EN / TP6 BOOT |
 
-Cấp nguồn bằng **pin đã lắp** (hoặc nguồn 3,0 V vào cọc pin). **Không** nối 3V3 của bộ chuyển vào TP1 khi đang có pin. Vào chế độ nạp bằng tay khi không có mạch tự reset: nối TP6 (BOOT) xuống GND, chạm TP5 (EN) xuống GND rồi thả, thả BOOT.
+Cấp nguồn bằng **pin đã lắp** (hoặc nguồn 3,0 V vào pad VBAT TP9 / cọc pin). **Không** nối 3V3 của bộ chuyển vào TP1 khi đang có pin. Vào chế độ nạp bằng tay khi không có mạch tự reset: nối TP6 (BOOT) xuống GND, chạm TP5 (EN) xuống GND rồi thả, thả BOOT.
 
 ```powershell
-cd ESP32-H2\matter-thread\matter-button-cr2032\build
+cd firmware\build
 # Giữ ghép nối (app + bootloader + bảng phân vùng):
 py -m esptool --chip esp32h2 -p COM5 -b 460800 --before default-reset --after hard-reset write-flash "@flash_args"
 # Hoặc file đầy đủ (xoá NVS):
@@ -925,27 +964,36 @@ Quy tắc:
 
 ## 9. Bảng tính thời lượng pin
 
-Tính bằng `tools/battery_model.py` (chạy lại sau khi thay số đo: sửa khối `PARAMETERS`). Giả định chung: CR2032 220 mAh × **0,80** dùng được, tự xả 1 %/năm, TPS63900 η = 0,89, V_pin trung bình 2,85 V (hệ số 3,3 / (0,89 × 2,85) = **1,30**), Iq 75 nA + rò 0,15 µA, Light-sleep 27 µA, poll 0,25 mC (0 dBm), 1 report keep-alive/giờ/controller, 3 report/lần nhấn/controller, 25 °C.
+Tính bằng `tools/battery_model.py` (chạy lại sau khi thay số đo: sửa khối `PARAMETERS`; `--cell CR2450` hoặc `--cell CR123A` để in một loại). Giả định chung: tự xả 1 %/năm, TPS63900 η = 0,89, Iq 75 nA + rò 0,15 µA, Light-sleep 27 µA, poll 0,25 mC (0 dBm), 1 report keep-alive/giờ/controller, 3 report/lần nhấn/controller, 25 °C. Theo pin:
+
+| Pin (bo) | Dung lượng dùng được | V_pin trung bình | Hệ số 3,3 / (η × V_pin) |
+|---|---|---|---|
+| CR2450 (`module-cr2450`) | 620 mAh × **0,80** = 496 mAh | 2,85 V | **1,30** |
+| CR123A (`module-cr123a`) | 1500 mAh × **0,90** = 1350 mAh | 2,90 V | **1,28** |
 
 ### 9.1 Theo số lần nhấn mỗi ngày
 
 TX 0 dBm, **1 controller** (Apple Home hoặc Home Assistant):
 
-| Chế độ ICD | 5 lần/ngày | 20 lần/ngày | 50 lần/ngày | 100 lần/ngày |
-|---|---|---|---|---|
-| **SIT 15 s** (mặc định) | 59 µA → **4,0 tháng** | 60 µA → **4,0 tháng** | 62 µA → **3,9 tháng** | 65 µA → **3,7 tháng** |
-| **LIT 120 s** (`lit`) | 43 µA → **5,6 tháng** | 45 µA → **5,4 tháng** | 48 µA → **4,9 tháng** | 55 µA → **4,4 tháng** |
+| Pin | Chế độ ICD | 5 lần/ngày | 20 lần/ngày | 50 lần/ngày | 100 lần/ngày |
+|---|---|---|---|---|---|
+| CR2450 | **SIT 15 s** (mặc định) | 59 µA → **11,3 tháng** | 60 µA → **11,2 tháng** | 62 µA → **10,9 tháng** | 65 µA → **10,4 tháng** |
+| CR2450 | **LIT 120 s** (`lit`) | 43 µA → **15,7 tháng** | 45 µA → **15,0 tháng** | 48 µA → **13,8 tháng** | 55 µA → **12,2 tháng** |
+| CR123A | **SIT 15 s** (`cr123a`) | 58 µA → **30,8 tháng** | 59 µA → **30,4 tháng** | 61 µA → **29,6 tháng** | 64 µA → **28,3 tháng** |
+| CR123A | **LIT 120 s** (`lit` + `cr123a`) | 42 µA → **42,5 tháng** | 44 µA → **40,7 tháng** | 48 µA → **37,5 tháng** | 54 µA → **33,1 tháng** |
 
 **2 controller** (Apple Home + Home Assistant, Multi-Admin):
 
-| Chế độ ICD | 5 lần/ngày | 20 lần/ngày | 50 lần/ngày | 100 lần/ngày |
-|---|---|---|---|---|
-| SIT 15 s | 60 µA → **4,0 tháng** | 61 µA → **3,9 tháng** | 63 µA → **3,8 tháng** | 68 µA → **3,5 tháng** |
-| LIT 120 s | 43 µA → **5,6 tháng** | 45 µA → **5,3 tháng** | 50 µA → **4,8 tháng** | 58 µA → **4,1 tháng** |
+| Pin | Chế độ ICD | 5 lần/ngày | 20 lần/ngày | 50 lần/ngày | 100 lần/ngày |
+|---|---|---|---|---|---|
+| CR2450 | SIT 15 s | 60 µA → **11,2 tháng** | 61 µA → **11,0 tháng** | 63 µA → **10,6 tháng** | 68 µA → **9,9 tháng** |
+| CR2450 | LIT 120 s | 43 µA → **15,6 tháng** | 45 µA → **14,8 tháng** | 50 µA → **13,4 tháng** | 58 µA → **11,6 tháng** |
+| CR123A | SIT 15 s | 59 µA → **30,6 tháng** | 60 µA → **30,0 tháng** | 62 µA → **28,9 tháng** | 67 µA → **27,1 tháng** |
+| CR123A | LIT 120 s | 42 µA → **42,1 tháng** | 45 µA → **40,0 tháng** | 49 µA → **36,3 tháng** | 57 µA → **31,5 tháng** |
 
-(Thực tế có Apple Home trong Multi-Admin thì bản LIT tự chạy SIT: dùng dòng SIT.)
+(Thực tế có Apple Home trong Multi-Admin thì bản LIT tự chạy SIT: dùng dòng SIT.) Hơn 2 năm thì tự xả và nhiệt độ ảnh hưởng nhiều hơn: số của CR123A là mức trên.
 
-Để so sánh, nếu để công suất phát mặc định của ESP-IDF (+20 dBm): SIT 3,2–3,5 tháng; LIT 3,9–5,3 tháng — chưa kể nguy cơ brownout ở mục 1.4.
+Để so sánh, nếu để công suất phát mặc định của ESP-IDF (+20 dBm): CR2450 SIT 9,0–9,8 tháng, LIT 10,9–14,9 tháng; CR123A SIT 24,5–26,8 tháng — chưa kể nguy cơ brownout của pin cúc áo ở mục 1.4.
 
 ### 9.2 Năng lượng theo trạng thái
 
@@ -965,15 +1013,15 @@ TX 0 dBm, **1 controller** (Apple Home hoặc Home Assistant):
 
 ### 9.3 Độ nhạy
 
-| Thay đổi | Ảnh hưởng (SIT, 20 lần/ngày) |
-|---|---|
-| Light-sleep 25 µA thay vì 27 µA | +0,2 tháng |
-| Rò tụ bulk 1 µA thay vì 0,15 µA | −0,06 tháng (mỗi µA rò ≈ 1,7 % tuổi pin) |
-| Rò tụ bulk bằng mức spec tối thiểu (2 × 13 µA) | −1,2 tháng (vì vậy phải đo, checklist B) |
-| Controller đặt subscription max interval 10 phút thay vì 1 giờ | −0,3 tháng |
-| Pin chỉ dùng được 70 % (hãng kém, lạnh) | −0,5 tháng |
-| Mất Border Router 1 ngày/tháng | −0,1 tháng (chính sách tạm dừng, mục 5.5) |
-| Nhiệt độ 0 °C | điện trở trong pin lithium tăng mạnh khi lạnh, dung lượng dùng được giảm [AS]: đo lại ở nhiệt độ sử dụng |
+| Thay đổi | CR2450 (SIT, 20 lần/ngày, 11,2 tháng) | CR123A (30,4 tháng) |
+|---|---|---|
+| Light-sleep 25 µA thay vì 27 µA | +0,5 tháng | +1,3 tháng |
+| Rò tụ bulk 1 µA thay vì 0,15 µA (mỗi µA rò ≈ 1,6 % tuổi pin) | −0,15 tháng | −0,4 tháng |
+| Rò tụ bulk bằng mức spec tối thiểu (CR2450: 2 × 13 µA; CR123A: 1 × 100 µF, ~6 µA) | −3,3 tháng (vì vậy phải đo, checklist B) | −2,7 tháng |
+| Controller đặt subscription max interval 10 phút thay vì 1 giờ | −0,9 tháng | −2,5 tháng |
+| Pin chỉ dùng được 70 % (hãng kém, lạnh) | −1,4 tháng | −6,8 tháng |
+| Mất Border Router 1 ngày/tháng | ~−2,5 % (chính sách tạm dừng, mục 5.5) | ~−2,5 % |
+| Nhiệt độ 0 °C | điện trở trong pin cúc áo tăng mạnh khi lạnh, dung lượng dùng được giảm [AS]: đo lại ở nhiệt độ sử dụng | CR123A chịu lạnh tốt hơn (tới −40 °C), vẫn nên đo |
 
 ### 9.4 Cập nhật bằng số đo
 
@@ -989,16 +1037,16 @@ py tools\battery_model.py --breakdown
 
 | # | Rủi ro | Hậu quả | Khắc phục / giảm thiểu | Kiểm chứng |
 |---|---|---|---|---|
-| 1 | Tuổi pin không đạt 6–12 tháng (giới hạn Light-sleep của ESP32-H2) | thay pin 3–5 tháng/lần | LIT nếu chỉ dùng HA; CR2450 (cùng mạch, ~11–15 tháng); hoặc SoC dòng ngủ thấp | checklist F, L |
+| 1 | Tuổi pin CR2450 ở SIT chỉ ~11 tháng (giới hạn Light-sleep của ESP32-H2) | thay pin dưới 1 năm/lần | LIT nếu chỉ dùng HA (~15 tháng); bo CR123A (~2,5 năm); hoặc SoC dòng ngủ thấp | checklist F, L |
 | 1b | Thiết bị **chưa ghép nối** để lâu: BLE còn bật giữ thạch anh 32 MHz chạy trong Light-sleep (bản module không có thạch anh 32 kHz) | ~4 mA, ~40–50 mAh mỗi đêm | Deep-sleep khi cửa sổ ghép nối đã đóng (`APP_UNCOMMISSIONED_DEEP_SLEEP`), nhấn nút để mở lại; ghép nối ngay sau khi lắp pin | checklist F11 |
-| 2 | Sụt áp/brownout khi phát lúc pin yếu hoặc lạnh | reset, mất sự kiện, có thể lặp reset | tụ bulk ≥ 220 µF hiệu dụng phía pin; TX 0 dBm từ khung đầu tiên (linker wrap); brownout 2,94 V; boot guard Deep-sleep; báo pin yếu sớm nhờ đo điện trở trong | checklist H, I |
+| 2 | Sụt áp/brownout khi phát lúc pin yếu hoặc lạnh | reset, mất sự kiện, có thể lặp reset | bo CR2450: tụ bulk ≥ 220 µF hiệu dụng phía pin (bo CR123A: pin chịu xung, không cần); TX 0 dBm từ khung đầu tiên (linker wrap); brownout 2,94 V; boot guard Deep-sleep; báo pin yếu sớm nhờ đo điện trở trong | checklist H, I |
 | 3 | +20 dBm mặc định của driver ở các khung đầu sau khởi động | brownout mỗi lần khởi động với pin đã dùng | `__wrap_esp_ieee802154_enable()` đặt 0 dBm trước khung đầu; kiểm tra dòng đỉnh 2 s đầu | checklist G |
 | 4 | Rò của tụ MLCC dung lượng lớn cao hơn dự tính | tuổi pin giảm (mỗi 1 µA ≈ −1,7 %; mức spec xấu nhất −30 %) | đo rò khi EN = 0; đổi hãng/lô tụ; giảm còn 2 × 100 µF nếu link cho phép; so sánh với tụ 470 µF: mục 2.8 | checklist B |
 | 5 | Re-attach không chạy được khi pin còn ~20 % (RX 2 s) | nút "chết" sau sự cố mạng dù pin chưa cạn hẳn | mô hình chỉ tính 80 %; cảnh báo Warning theo áp dự đoán; người dùng thay pin khi có Warning | checklist I |
 | 6 | Apple Home không hỗ trợ LIT | bản LIT không lợi gì với Apple | DSLS: tự giữ SIT khi có fabric không đăng ký Check-In; mặc định build SIT | checklist C |
 | 7 | HA LIT/Battery Saving còn thử nghiệm | mất subscription, sự kiện trễ | dùng SIT nếu thấy `SUB terminated` lặp lại | checklist L |
 | 8 | Controller đặt subscription max interval ngắn | keep-alive dày hơn, tốn pin | xem `id_diag: SUB established … max …`; ICD giới hạn max interval theo IdleModeDuration khi controller cho phép | checklist C |
-| 9 | Link 0 dBm yếu (vỏ, kim loại, xa router) | poll lỗi, re-attach thường xuyên, tốn pin | bo 29,8 × 23,9 mm (cả cụm dưới 30 × 30 mm) đặt pin cách anten 3,4 mm (đánh đổi kích thước): đo RSSI/LQI trước; nếu yếu, dùng bố trí 25 × 27 mm (6,5 mm) hoặc 30 × 38 mm (~16 mm); thêm router Thread cắm điện gần; tăng `THREAD_TX_POWER_DBM` từng bước (3–6 dBm) | checklist C, L |
+| 9 | Link 0 dBm yếu (vỏ, kim loại, xa router) | poll lỗi, re-attach thường xuyên, tốn pin | bo CR2450 có vỏ pin kim loại cách chân anten 4,75 mm, bo CR123A 8 mm: đo RSSI/LQI trước khi làm vỏ; thêm router Thread cắm điện gần; tăng `THREAD_TX_POWER_DBM` từng bước (3–6 dBm); bo CR2450 kéo dài thêm vài mm để pin xa anten hơn nếu cần | checklist C, L |
 | 10 | Mất Border Router lâu | nút offline; tốn pin cho re-attach | tạm dừng Thread sau 30 phút, thử lại 30 phút → 4 giờ, nhấn nút thử ngay; nên có ≥ 2 Border Router/router | checklist J |
 | 11 | Sự kiện nhấn khi mất mạng hoặc mất subscription bị mất (Apple coi sự kiện đọc lại là lịch sử) | automation không chạy; lần bấm đầu sau sự cố chỉ "kết nối lại" | gửi lại cử chỉ khi controller subscribe lại trong 30 s (mục 6.7); quá 30 s vẫn mất; khuyến nghị nhiều Border Router | checklist J9–J12, host test |
 | 12 | Độ trễ "nhấn một lần" > 300 ms do cửa sổ nhấn đúp | automation chậm ~0,35 s | giảm `BUTTON_MULTI_PRESS_WINDOW_MS`, hoặc tắt nhấn đúp | checklist E |
@@ -1009,7 +1057,9 @@ py tools\battery_model.py --breakdown
 | 17 | OTA tốn 1–5 mAh [AS] và lâu trên SED | pin giảm 0,5–3 % mỗi lần cập nhật | chỉ tải khi pin OK; hỏi 1 lần/ngày; rollback nếu image mới không vào mạng | checklist M |
 | 18 | Thạch anh RC 136 kHz trôi theo nhiệt | poll lệch vài %, không ảnh hưởng SED | không dùng CSL; nếu cần thì lắp thạch anh 32 kHz ở GPIO13/14 | — |
 | 19 | Bản debug không ngủ | đo dòng sai | chỉ đo dòng với bản phát hành | — |
-| 20 | Tụ bulk lớn tạo dòng xung khi lắp pin | tia lửa nhỏ ở tiếp điểm | pin lithium giới hạn dòng qua R_trong (~0,3 A, vài ms); chấp nhận được | checklist B |
+| 20 | Tụ bulk lớn tạo dòng xung khi lắp pin | tia lửa nhỏ ở tiếp điểm | pin cúc áo giới hạn dòng qua R_trong (~0,3 A, vài ms); CR123A chỉ có 100 µF; chấp nhận được | checklist B |
+| 21 | Lắp pin sạc RCR123A / 16340 (Li-ion 3,7–4,2 V) vào bo CR123A | mạch vẫn chạy (TPS63900 tới 5,5 V) nhưng VBAT_SENSE vượt dải ADC, % và mức pin sai | dùng pin Li-MnO2 3 V; ghi trên vỏ; muốn dùng pin sạc thì thêm cầu chia (R9/R10) và chỉnh `BATTERY_SENSE_RATIO_X1000` cùng các ngưỡng | — |
+| 22 | Nạp nhầm firmware giữa hai bo | loại pin, dung lượng, % pin báo sai (nút vẫn chạy) | nạp bản `cr123a` cho bo CR123A; kiểm tra `HardwareVersionString` trong app | checklist A |
 
 ---
 

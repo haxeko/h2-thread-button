@@ -10,10 +10,12 @@ from capsim import BTN, TH, Bank, run  # noqa: E402
 
 UF = 1e-6
 # Effective values at ~3 V, 25 degC. 220 uF 1210 X5R 6.3 V at 3 V: ~130 uF each assumed (README of the
-# button: 2 x 220 uF ~ 260 uF), 100 uF 1206: ~37.5 uF (power_model.py), 10 uF 0603: ~5 uF.
+# button: 2 x 220 uF ~ 260 uF), 100 uF 1206: ~37.5 uF (power_model.py), 10 uF 0603: ~5 uF (the CR123A board: one
+# 100 uF 1206 + the 10 uF at the converter input, ~42.5 uF).
 # Aluminium 470 uF 6.3 V (KNSCHA RVT, tan d 0.22 @ 120 Hz -> ~0.6 Ohm), at 0/-10 degC: C x0.9, ESR x3.
 # Tantalum MnO2 470 uF (AVX TAJD477K006, ESR <= 0.4 Ohm @ 100 kHz), at 0/-10 degC: C x0.97, ESR x1.5.
 BANKS = [
+    Bank("1x100 MLCC (CR123A)", c_cer=42.5 * UF),
     Bank("1x220 MLCC", c_cer=135 * UF),
     Bank("2x220 MLCC (nut)", c_cer=265 * UF),
     Bank("2x220 MLCC thap", c_cer=205 * UF),
@@ -25,8 +27,8 @@ BANKS = [
 ]
 STATES = [("fresh", "25C"), ("mid", "25C"), ("late", "25C"), ("eol", "25C"),
           ("fresh", "10C"), ("mid", "10C"), ("fresh", "0C"), ("mid", "0C"), ("fresh", "-10C"), ("mid", "-10C")]
-CASES = [(BTN, "CR2032", ["poll x5", "press", "boot", "attach"]),
-         (BTN, "CR2450", ["poll x5", "press", "boot", "attach"]),
+CASES = [(BTN, "CR2450", ["poll x5", "press", "boot", "attach"]),
+         (BTN, "CR123A", ["poll x5", "press", "boot", "attach"]),
          (TH, "CR2450", ["poll x5", "report", "boot", "attach"])]
 
 

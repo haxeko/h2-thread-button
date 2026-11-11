@@ -1,19 +1,14 @@
+# firmware/: ESP-IDF build trees and generated sdkconfig of each variant (sdkconfig.defaults* are tracked)
 build/
+build-*/
+managed_components/
 sdkconfig
 sdkconfig.old
-managed_components/
 sdkconfig.debug
-build-debug/
 sdkconfig.unique
-build-unique/
 sdkconfig.factory
-build-factory/
 sdkconfig.lit
-build-lit/
-__pycache__/
-sdkconfig.chip
-build-chip/
 sdkconfig.pmdiag
-build-pmdiag/
-sdkconfig.cr2450
-build-cr2450/
+sdkconfig.cr123a
+sdkconfig.*.old
+__pycache__/

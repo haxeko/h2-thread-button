@@ -19,7 +19,7 @@ mkdir ~/matter-mfg && cd ~/matter-mfg
 T=/đường/dẫn/h2-thread-button/tools/matter-mfg
 $T/in_docker.sh gen_pki.sh
 $T/in_docker.sh gen_factory_data.sh -t occupancy -n 5
-# Mỗi bo: nạp fctry TRƯỚC, rồi firmware build với sdkconfig.defaults.factory
+# Mỗi bo: nạp fctry TRƯỚC, rồi firmware build với firmware/sdkconfig.defaults.factory
 $T/flash_factory.sh /dev/ttyUSB0 factory/occupancy-*/fff1_8000/<uuid>/<uuid>-partition.bin
 ```
 
@@ -28,7 +28,7 @@ $T/flash_factory.sh /dev/ttyUSB0 factory/occupancy-*/fff1_8000/<uuid>/<uuid>-par
 - `gen_pki.sh`, rồi chạy lại với `--private` (file đã có được giữ nguyên)
 - `gen_factory_data.sh -t occupancy -n 2`, và `-n 3` với `CD_FILE=pki/cd/CD_test_occupancy_0107.der`
 - `gen_factory_data.sh -t plug -n 1 --private`
-- `gen_factory_data.sh -t switch -n 2` (nút CR2032 `matter-button-cr2032`, Generic Switch 0x000F)
+- `gen_factory_data.sh -t switch -n 2` (nút nhấn của repo này, bo CR2450 hoặc CR123A, Generic Switch 0x000F)
 - `gen_factory_data.sh -t contact -n 2` (cảm biến cửa `matter-door-sensor`, Contact Sensor 0x0015)
 - `check_qr.sh` với QR và với mã nhập tay
 

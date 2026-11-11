@@ -2,8 +2,9 @@
 """
 Bulk capacitor comparison for two ESP32-H2 coin-cell designs that share the same power path
 (cell -> P-MOSFET -> TPS63900 3.3 V):
-  BTN  matter-button-cr2032 / matter-door-sensor: TX 0 dBm (36 mA), RX 25 mA, no TPS63900 input
-       current limit (CFG2 = 0 Ohm), ~15 uF effective at 3V3, reset = ESP32-H2 brownout ~2.94 V
+  BTN  this button (hardware/module-cr2450, hardware/module-cr123a) / matter-door-sensor: TX 0 dBm (36 mA),
+       RX 25 mA, no TPS63900 input current limit (CFG2 = 0 Ohm), ~15 uF effective at 3V3, reset = ESP32-H2
+       brownout ~2.94 V
   TH   matter-temperature-sensor Rev B / H2W: TX +5 dBm (50 mA), RX 29 mA, 100 mA input limit,
        100 uF effective at 3V3, reset = TPS3839K33 2.93 V
 
@@ -26,7 +27,10 @@ CELL_STATES = {
     "eol":   dict(ocv=2.75, r_ohm=100.0, r_p1=50.0, tau1=0.05, b2=0.50, tau2=20.0),
 }
 TEMPS = {"25C": (1.0, 1.0, 0.0), "10C": (1.3, 1.25, 0.01), "0C": (1.7, 1.6, 0.03), "-10C": (2.5, 2.2, 0.05)}
-CELL_TYPES = {"CR2032": (1.0, 1.0), "CR2450": ((17.0 / 22.0) ** 2, (22.0 / 17.0) ** 2)}
+# (resistance factor, current scale) relative to the CR2032 states above (the reference curves of power_model.py).
+# CR2450: by electrode area. CR123A: [AS] a bobbin cell rated for pulses of 1-2 A, ~0.2 ohm fresh (Panasonic CR123A
+# datasheet: ~3 V at 1 A) instead of ~12 ohm: factor 1/50, a rough scaling of the coin cell model, not a fit.
+CELL_TYPES = {"CR2032": (1.0, 1.0), "CR2450": ((17.0 / 22.0) ** 2, (22.0 / 17.0) ** 2), "CR123A": (0.02, 50.0)}
 
 
 @dataclass(frozen=True)

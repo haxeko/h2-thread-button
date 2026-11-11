@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Schematic of the CR2032 Matter button (README section 3), drawn with schemdraw.
+"""Schematic of the battery Matter button, boards module-cr2450 / module-cr123a (README section 3), drawn with schemdraw.
 
     pip install schemdraw matplotlib
     python3 tools/schematic.py [OUTDIR]   -> OUTDIR (default docs/)/schematic.svg and schematic.png
@@ -93,20 +93,20 @@ def draw(path):
         d.config(unit=2.0, fontsize=10, lw=1.4)
 
         # ------------------------------------------------------------------ title
-        text(d, (-1, 25.0), "Nút Matter over Thread CR2032 · ESP32-H2-WROOM-02C · sơ đồ nguyên lý v1.0", size=15)
+        text(d, (-1, 25.0), "Nút Matter over Thread chạy pin (CR2450 / CR123A) · ESP32-H2-WROOM-02C · sơ đồ nguyên lý v1.0", size=15)
         note(d, (-1, 24.1), "Ký hiệu và giá trị theo BOM (README mục 4). Mọi tụ là MLCC; R1–R3 ±1 %, TCR ≤ ±200 ppm; "
                             "JP1/JP2 là cầu hàn, mặc định nối; C7 không lắp (DNP). Mũi tên 3V3 / VBAT = cùng một net.",
              size=9.5)
 
         # ================================================================== ① battery, reverse polarity, bulk
         rail = 18.0
-        section(d, -1, 22.8, 16.4, 10.2, "① Nguồn pin: CR2032 → chống ngược cực → tụ bulk")
+        section(d, -1, 22.8, 16.4, 10.2, "① Nguồn pin: CR2450 / CR123A → chống ngược cực → tụ bulk")
         # Long plate (+) at the element start: drawn downwards from the rail
         bt = elm.Battery().down().at((0.8, rail)).toy(13.6)
         d += bt
         gnd(d, bt.end)
         text(d, (0.15, 16.75), "+", size=12, halign="center")
-        text(d, (1.35, 15.6), "BT1\nCR2032\n3 V")
+        text(d, (1.35, 15.6), "BT1\nCR2450 /\nCR123A\n3 V")
         d += elm.Line().at((0.8, rail)).to((3.0, rail))
         q1 = elm.PFet().theta(-90).anchor("drain").at((3.0, rail))
         d += q1
@@ -125,8 +125,9 @@ def draw(path):
             d += elm.Dot().at((x, rail))
             vpart(d, elm.Capacitor, x, rail, 3.0, ref, "220 µF")
         note(d, (11.3, 13.9), "1210 X5R 6,3 V\n≈ 260 µF hiệu dụng ở 3 V", halign="center")
-        note(d, (7.4, 11.2), "Tụ bulk phía pin: cấp xung TX/RX ngắn (khung ≤ 4,3 ms),\n"
-                             "pin chỉ nạp lại tụ qua điện trở trong 10–25 Ω", halign="center")
+        note(d, (7.4, 11.2), "Bo CR2450: tụ bulk phía pin cấp xung TX/RX ngắn (khung ≤ 4,3 ms),\n"
+                             "pin chỉ nạp lại tụ qua điện trở trong 8–30 Ω.\n"
+                             "Bo CR123A: chỉ C1 100 µF 1206 (pin < 1 Ω), không có C2", halign="center")
 
         # ================================================================== ② TPS63900
         section(d, 16.4, 22.8, 39.0, 10.2, "② Buck-boost TPS63900 → 3,3 V (Iq 75 nA)")

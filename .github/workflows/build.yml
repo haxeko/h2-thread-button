@@ -1,4 +1,4 @@
-name: Build matter-button-h2-cr2032
+name: Build matter-button-h2
 
 on:
   push:
@@ -14,9 +14,32 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Button FSM host test
-        run: test/host/run.sh
+        run: firmware/test/host/run.sh
       - name: Battery model
         run: python3 tools/battery_model.py --breakdown
+
+  hardware-check:
+    # ERC and DRC (with schematic parity) of every board in hardware/: the committed KiCad files must stay clean
+    runs-on: ubuntu-latest
+    container:
+      image: kicad/kicad:9.0
+      options: --user root  # the image user cannot write the checkout
+    strategy:
+      fail-fast: false
+      matrix:
+        board: [module-cr2450, module-cr123a]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: ERC + DRC (${{ matrix.board }})
+        shell: bash
+        run: |
+          # global symbol / footprint library tables, as a fresh KiCad install creates them
+          mkdir -p "$HOME/.config/kicad/9.0"
+          cp /usr/share/kicad/template/sym-lib-table /usr/share/kicad/template/fp-lib-table "$HOME/.config/kicad/9.0/"
+          cd hardware/${{ matrix.board }}
+          python3 -c "import sys; sys.path.insert(0, '../scripts'); import gen_fab; gen_fab.check()"
 
   build:
     runs-on: ubuntu-latest
@@ -24,9 +47,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # default: ICD SIT (every controller, Apple Home included); lit: ICD LIT + DSLS (sdkconfig.defaults.lit);
-        # chip: the chip-down board of hardware-chip/ (32.768 kHz crystal, WS2812B RGB LED, sdkconfig.defaults.chip)
-        variant: [default, lit, chip]
+        # default: board module-cr2450, ICD SIT (every controller, Apple Home included);
+        # lit: ICD LIT + DSLS (sdkconfig.defaults.lit); cr123a: board module-cr123a (sdkconfig.defaults.cr123a)
+        variant: [default, lit, cr123a]
+    defaults:
+      run:
+        working-directory: firmware
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,17 +81,17 @@ jobs:
           name: matter_button_h2-${{ env.FW_VERSION }}${{ env.SUFFIX }}
           if-no-files-found: error
           path: |
-            build/matter_button_h2-${{ env.FW_VERSION }}.bin
-            build/matter_button_h2-ota.bin
-            build/matter_button_h2.bin
-            build/bootloader/bootloader.bin
-            build/partition_table/partition-table.bin
-            build/ota_data_initial.bin
-            build/flash_args
+            firmware/build/matter_button_h2-${{ env.FW_VERSION }}.bin
+            firmware/build/matter_button_h2-ota.bin
+            firmware/build/matter_button_h2.bin
+            firmware/build/bootloader/bootloader.bin
+            firmware/build/partition_table/partition-table.bin
+            firmware/build/ota_data_initial.bin
+            firmware/build/flash_args
       # ELF/map decode silent-assert and panic addresses from a CI-flashed device
       - uses: actions/upload-artifact@v4
         with:
           name: matter_button_h2-${{ env.FW_VERSION }}${{ env.SUFFIX }}-debug
           path: |
-            build/matter_button_h2.elf
-            build/matter_button_h2.map
+            firmware/build/matter_button_h2.elf
+            firmware/build/matter_button_h2.map

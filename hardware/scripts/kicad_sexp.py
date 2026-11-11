@@ -2,9 +2,17 @@
 
 import os
 import re
+import sys
 import uuid
 
-HW = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))  # hardware/ = KiCad project folder
+# Board folder (hardware/<board>/, the KiCad project folder): the current directory, or BOARD_DIR. Its design.py
+# describes the board; the scripts of this folder are shared by every board.
+HW = os.path.abspath(os.environ.get("BOARD_DIR", os.getcwd()))
+if not os.path.exists(os.path.join(HW, "design.py")):
+    raise SystemExit(f"no design.py in {HW}: run the scripts from a board folder, e.g.\n"
+                     "  cd hardware/module-cr2450 && python3 ../scripts/gen_project.py")
+if HW not in sys.path:
+    sys.path.insert(0, HW)
 
 
 def _stock(env, sub):

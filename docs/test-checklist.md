@@ -1,6 +1,6 @@
-# Checklist kiểm thử: nút Matter over Thread CR2032
+# Checklist kiểm thử: nút Matter over Thread chạy pin (CR2450 / CR123A)
 
-Áp dụng cho bo theo [README](../README.md) mục 3 và firmware bản phát hành (mặc định SIT, hoặc `lit`). **Không đo dòng với bản debug** (bản debug không Light-sleep). Ghi kết quả vào cột cuối; các số [AS] trong `tools/battery_model.py` được thay bằng số đo ở mục F, G.
+Áp dụng cho cả hai bo ([`hardware/module-cr2450`](../hardware/module-cr2450/README.md), [`hardware/module-cr123a`](../hardware/module-cr123a/README.md)) theo [README](../README.md) mục 3 và firmware bản phát hành khớp bo (mặc định SIT hoặc `lit`; bo CR123A thêm `sdkconfig.defaults.cr123a`). Mục O chỉ cho bo CR123A. **Không đo dòng với bản debug** (bản debug không Light-sleep). Ghi kết quả vào cột cuối; các số [AS] trong `tools/battery_model.py` được thay bằng số đo ở mục F, G.
 
 Log: UART0 115200 baud (TP3/TP4). Các dòng log được nhắc tới: `id_diag` (danh tính, Thread, parent RSSI, subscription), `power` (công suất phát, tạm dừng Thread, LIT/SIT), `battery` (áp pin, mức pin), `switch` (cử chỉ).
 
@@ -15,7 +15,7 @@ Log: UART0 115200 baud (TP3/TP4). Các dòng log được nhắc tới: `id_diag
 | Apple Home hub có Thread (HomePod mini / Apple TV 4K) + iPhone | mục C, D, K |
 | Home Assistant + Matter Server add-on ≥ 9.1.0 + OpenThread Border Router (ZBT-1/SkyConnect) | mục C, D, J, K, L |
 | Tuỳ chọn: nRF52840 dongle + Wireshark (sniffer 802.15.4) | kiểm tra poll, công suất khung, re-attach |
-| Pin CR2032 mới của ít nhất 2 hãng (Panasonic, Energizer, Murata) | H, L |
+| Pin mới của ít nhất 2 hãng: CR2450 (Panasonic, Energizer, Murata, Maxell) cho bo CR2450, CR123A (Panasonic, Energizer, Duracell) cho bo CR123A | H, L |
 
 Điểm đo trên bo: **JP1** (cắt cầu hàn, nối ampe kế) = dòng từ pin, đã qua tụ bulk; **JP2** = dòng đường 3,3 V (dòng thật của module, có xung). Cấp nguồn thay pin: nguồn/PPK2 ở chế độ source 3,0 V vào cọc pin BT1.
 
@@ -107,30 +107,30 @@ PPK2/Joulescope ở JP1 (phía pin, nguồn 3,0 V) và ở JP2 (phía 3,3 V). Đ
 | G3 | Dòng đỉnh BLE khi ghép nối | ≤ 40 mA (BLE 0 dBm) | |
 | G4 | Sniffer: công suất/RSSI khung từ nút ở 1 m so với một thiết bị biết công suất | khớp 0 dBm | |
 
-## H. Áp pin CR2032 khi phát
+## H. Áp pin khi phát
 
 Oscilloscope DC trên TP9 (VBAT), độ phân giải ≤ 10 mV/div (dùng offset), kích theo sườn xuống 50 mV dưới mức nghỉ.
 
 | # | Bước | Đạt khi | Kết quả |
 |---|---|---|---|
-| H1 | Pin mới, sụt áp khi poll và khi gửi report | ≤ 0,3 V | |
+| H1 | Pin mới, sụt áp khi poll và khi gửi report | CR2450 ≤ 0,3 V; CR123A ≤ 0,05 V | |
 | H2 | Pin mới, re-attach (tắt/bật Border Router) | V_pin_min ≥ 2,3 V | |
 | H3 | Pin đã dùng (hoặc giả lập mục I) | V_pin_min ≥ 1,9 V khi phát; ≥ 1,75 V khi re-attach | |
-| H4 | So với tính toán README 1.4 (C hiệu dụng, R_trong) | sai khác ≤ 30 %; nếu tụ hiệu dụng thấp → thêm tụ | |
+| H4 | So với tính toán README 1.4 (C hiệu dụng, R_trong) | sai khác ≤ 30 %; bo CR2450: nếu tụ hiệu dụng thấp → thêm tụ (README 2.8) | |
 | H5 | Ghép nối BLE với pin mới | không brownout | |
 
 ## I. Pin gần cạn (giả lập)
 
-Nguồn DC + điện trở nối tiếp vào cọc pin, thay cho CR2032:
+Nguồn DC + điện trở nối tiếp vào cọc pin, thay cho pin. Điện trở cho CR2450 là [AS] (đường IR của CR2032 nhân 0,6 theo diện tích điện cực); CR123A dưới 1 Ω gần suốt đời pin nên chủ yếu kiểm tra ngưỡng áp (dùng dây ngắn, R ≈ 0,2–2 Ω):
 
-| Điểm giả lập | V nguồn | R nối tiếp | Tương ứng (đường Energizer) |
+| Điểm giả lập | V nguồn | R nối tiếp CR2450 / CR123A | Tương ứng (CR2450) |
 |---|---|---|---|
-| I-a | 2,90 V | 10 Ω | pin mới |
-| I-b | 2,80 V | 15 Ω | ~150 mAh |
-| I-c | 2,75 V | 20 Ω | ~175 mAh (giới hạn mô hình 80 %) |
-| I-d | 2,60 V | 25 Ω | ~200 mAh |
-| I-e | 2,40 V | 30 Ω | gần cạn |
-| I-f | 2,20 V | 40 Ω | cạn |
+| I-a | 2,90 V | 6 Ω / 0,2 Ω | pin mới |
+| I-b | 2,80 V | 9 Ω / 0,3 Ω | ~420 mAh |
+| I-c | 2,75 V | 12 Ω / 0,5 Ω | ~500 mAh (giới hạn mô hình 80 %) |
+| I-d | 2,60 V | 15 Ω / 1 Ω | ~560 mAh |
+| I-e | 2,40 V | 18 Ω / 1,5 Ω | gần cạn |
+| I-f | 2,20 V | 24 Ω / 2 Ω | cạn |
 
 | # | Bước (mỗi điểm) | Đạt khi | Kết quả |
 |---|---|---|---|
@@ -207,17 +207,13 @@ Bản phát hành, 2 controller (Apple + HA), ~20 lần nhấn/ngày (bằng tay
 | N3 | Xoá khỏi controller cuối cùng | như N1 | |
 | N4 | Giữ nút khi lắp pin với pin yếu (boot guard Deep-sleep) | không thức dậy liên tục khi nút đang bị giữ; thức bằng timer sau 1 giờ | |
 
-## O. Bo chip (`hardware-chip/`, firmware `sdkconfig.defaults.chip`)
-
-Thêm cho bản không dùng module (chip ESP32-H2, anten in trên bo, LED RGB). Các mục A–N vẫn áp dụng; điểm đo và pad test như bản module (vị trí khác, xem [`hardware-chip/README.md`](../hardware-chip/README.md) mục 4).
+## O. Riêng bo CR123A (`hardware/module-cr123a`, firmware `sdkconfig.defaults.cr123a`)
 
 | # | Bước | Đạt khi | Kết quả |
 |---|---|---|---|
-| O1 | Log khởi động: đồng hồ RTC | không có cảnh báo chuyển về RC trong (thạch anh 32,768 kHz Y2 dao động) | |
-| O2 | Tần số 32 MHz: TX tone (ESP RF Test Tool), máy phân tích phổ | lệch ≤ ±10 ppm; nếu không, đổi C18/C19 (lệch dương → tăng) | |
-| O3 | Anten: S11 tại chân feed (tháo R11, cáp đồng trục), bo trong vỏ, có pin | S11 < −10 dB trên 2,40–2,48 GHz sau khi chọn C24/R11/C25 | |
-| O4 | Công suất phát dẫn (cáp ở chân 32 sau lọc C22/L3/C23) | đúng mức đặt (0 dBm) ± 2 dB, hài trong giới hạn | |
-| O5 | RSSI/LQI của parent so với bo module ở cùng vị trí | không kém hơn quá 6 dB | |
-| O6 | LED RGB: mở cửa sổ ghép nối, Identify, giữ nút 10 s / 20 s, nhấn khi pin yếu (giả lập) | lần lượt xanh dương, trắng, xanh dương rồi đỏ, cam (bảng màu ở README mục 7.8, dòng `STATUS_LED_WS2812`) | |
-| O7 | **Dòng ngủ khi LED tắt** (JP2) | như bản module ± 2 µA: Q2 cắt nguồn LED (LED kiểu WS2812 tự tiêu thụ 0,7 mA nếu còn nguồn) | |
-| O8 | Dòng khi LED sáng (JP2, độ sáng 40) | ~2 mA mỗi màu, ~6 mA màu trắng | |
+| O1 | Trước khi hàn: đối chiếu cực của đế Bulgin BX0123 với chân vuông (pad 1, dấu "+" in ở mặt dưới) | cực + của đế ở chân vuông | |
+| O2 | Lắp ngược pin 10 s | không chạy, Q1 và pin không ấm, dòng ≤ 1 µA | |
+| O3 | Basic Information / Power Source trong controller hoặc log `id_diag` | `HardwareVersionString` "ESP32-H2-WROOM-02C CR123A v1.0", `BatIECDesignation` "CR17345", `BatCapacity` 1500 | |
+| O4 | RSSI/LQI của parent so với bo CR2450 ở cùng vị trí | không kém hơn | |
+| O5 | Sụt áp TP9 khi re-attach (2 s RX) với pin mới và giả lập I-f | ≤ 0,1 V (pin mới); không brownout ở I-f | |
+| O6 | Pin sạc RCR123A 3,7 V (không được dùng): chỉ thử để biết hậu quả, nguồn có giới hạn dòng | mạch chạy, `BatVoltage` đứng ở ~3,3 V (ADC bão hoà); ghi lại để cảnh báo người dùng | |

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Battery life model of the ESP32-H2 Matter-over-Thread CR2032 button (README, "Bảng tính thời lượng pin").
+"""Battery life model of the ESP32-H2 Matter-over-Thread button (README, "Bảng tính thời lượng pin"), for the cell of
+each board in hardware/: CR2450 (module-cr2450) and CR123A (module-cr123a). Same electronics and firmware on both.
 
 Every parameter carries its source:
-  [DS] datasheet value              (ESP32-H2 datasheet v1.3, TPS63900 SLVSET3D, Energizer/Panasonic CR2032)
+  [DS] datasheet value              (ESP32-H2 datasheet v1.3, TPS63900 SLVSET3D, Energizer/Panasonic cells)
   [ME] Espressif measurement        (esp-matter examples/icd_app/README.md current waveforms, ESP32-H2 DevKitC,
                                      20 dBm TX: LIT 20 s poll -> 46.6 uA avg, 26.7 uA floor over 160.3 s;
                                      SIT 5 s poll -> 88.5 uA avg, 27.0 uA floor over 20.0 s)
@@ -11,8 +12,9 @@ Every parameter carries its source:
 Charges are at the 3.3 V rail (load side); the TPS63900 turns them into battery charge with
   Q_bat = Q_load * V_DD / (eta * V_BAT).
 
-Usage:  python3 tools/battery_model.py            (README tables)
-        python3 tools/battery_model.py --breakdown (where the average current goes, reference cases)
+Usage:  python3 tools/battery_model.py                (README tables, every cell)
+        python3 tools/battery_model.py --cell CR123A  (one cell)
+        python3 tools/battery_model.py --breakdown     (where the average current goes, reference cases)
 Edit the PARAMETERS block with your measurements and run again.
 """
 
@@ -21,17 +23,22 @@ import argparse
 # ---------------------------------------------------------------------------------------------------- PARAMETERS
 V_DD = 3.3            # [design] TPS63900 output, VO(2) = 3.3 V
 ETA = 0.89            # [DS] TPS63900 efficiency, VO 3.3 V, VI 2.5..3.0 V, 10 uA..10 mA (Figure 8-7)
-V_BAT = 2.85          # [DS] mean CR2032 voltage over its life at light load (plateau ~2.9 V, Energizer)
 I_Q_CONV = 75e-9      # [DS] TPS63900 quiescent current into VIN (typ)
 I_LEAK = 0.15e-6      # [AS] ADC pin (<= 50 nA [DS max]) + MLCC bulk capacitors + MOSFET, at 25 degC
 
-CAP_MAH = 220.0       # [DS] CR2032 nominal (Panasonic 225, Energizer 235 mAh to 2.0 V at 15 kOhm)
-USABLE = 0.80         # [AS] pulse-load derating: the cell is "empty" for this design when it can no longer feed a
-                      #      2 s re-attach RX (25 mA at 3.3 V = ~95 mW at the converter input, constant power) above
-                      #      the TPS63900 UVLO: R_int <= ~20 ohm at OCV 2.8 V, ~175 mAh on the Energizer 235 mAh
-                      #      curve. Short TX/RX bursts are bridged by the bulk capacitor much longer.
-                      #      TI SWRA349: 50-100 % of rated depending on the vendor.
-SELF_DISCHARGE = 0.01 # [DS] per year (Energizer)
+# Cells of the boards: name -> (capacity mAh, usable fraction, mean voltage under load V, self-discharge per year,
+# board, source tags). Usable fraction [AS]: the cell is "empty" for this design when it can no longer feed a 2 s
+# re-attach RX (25 mA at 3.3 V = ~95 mW at the converter input, constant power) above the TPS63900 UVLO; short TX/RX
+# bursts are bridged by the bulk capacitors much longer. TI SWRA349: 50-100 % of rated depending on the vendor.
+CELLS = {
+    # coin cell: R_int climbs to ~20 ohm well before the end (as the CR2032 of the former board: ~80 % usable)
+    "CR2450": (620.0, 0.80, 2.85, 0.01, "module-cr2450", "[DS] Energizer CR2450 620 mAh, plateau ~2.9 V; [AS] usable"),
+    # bobbin cell, pulse capable (R_int well under 1 ohm for most of its life): ~90 % usable
+    "CR123A": (1500.0, 0.90, 2.90, 0.01, "module-cr123a", "[DS] Li-MnO2 1500 mAh class (Panasonic, Energizer); "
+               "[AS] usable"),
+}
+CELL = "CR2450"       # the cell of the tables; --cell picks another one
+CAP_MAH, USABLE, V_BAT, SELF_DISCHARGE = CELLS[CELL][:4]
 
 I_SLEEP = 27e-6       # [ME] Light-sleep floor, peripherals + flash powered down (datasheet 25 uA typ [DS])
 
@@ -62,20 +69,28 @@ ICD_MODES = {
 # InitialPress, ShortRelease, MultiPressComplete -> up to 3 reports (events closer than one exchange share one)
 REPORTS_PER_PRESS = 3   # [AS]
 
-# Other power sources, same firmware and electronics (README "Phương án thay thế"):
+# Power sources compared, same firmware and electronics (README "Phương án"):
 #   (name, capacity mAh, usable fraction, mean voltage under load V, self-discharge per year, source tags)
 ALTERNATIVES = [
-    ("CR2032 (this design)", 220.0, 0.80, 2.85, 0.01, "[DS] Energizer/Panasonic, [AS] usable"),
-    ("CR2450", 620.0, 0.80, 2.85, 0.01, "[DS] Energizer CR2450 620 mAh, [AS] usable"),
-    ("CR123A", 1500.0, 0.90, 2.90, 0.01, "[DS] Li-MnO2 1500 mAh class, pulse capable, [AS] usable"),
-    ("2 x AAA alkaline", 1150.0, 0.90, 2.50, 0.03, "[DS] ~1150 mAh/cell at low drain, [AS] usable to 0.85 V/cell"),
+    ("CR2450 (bo module-cr2450)", *CELLS["CR2450"][:4], CELLS["CR2450"][5]),
+    ("CR123A (bo module-cr123a)", *CELLS["CR123A"][:4], CELLS["CR123A"][5]),
+    ("CR2032 (bo cũ, đã bỏ)", 220.0, 0.80, 2.85, 0.01, "[DS] Energizer/Panasonic, [AS] usable"),
+    ("2 x AAA alkaline (không có bo)", 1150.0, 0.90, 2.50, 0.03,
+     "[DS] ~1150 mAh/cell at low drain, [AS] usable to 0.85 V/cell"),
 ]
 # ------------------------------------------------------------------------------------------------- END PARAMETERS
 
 
-def bat_from_load(i_load, v_bat=V_BAT):
+def use_cell(name):
+    """Select the cell of the tables (module globals, as the PARAMETERS block)."""
+    global CELL, CAP_MAH, USABLE, V_BAT, SELF_DISCHARGE
+    CELL = name
+    CAP_MAH, USABLE, V_BAT, SELF_DISCHARGE = CELLS[name][:4]
+
+
+def bat_from_load(i_load, v_bat=None):
     """Battery current for a load current on the 3.3 V rail."""
-    return i_load * V_DD / (ETA * v_bat)
+    return i_load * V_DD / (ETA * (v_bat or V_BAT))
 
 
 def average_load_current(mode, presses_per_day, controllers, q_poll=Q_POLL_0DBM):
@@ -93,11 +108,14 @@ def average_load_current(mode, presses_per_day, controllers, q_poll=Q_POLL_0DBM)
     return parts, q_press
 
 
-def battery_current(parts, v_bat=V_BAT):
+def battery_current(parts, v_bat=None):
     return bat_from_load(sum(parts.values()), v_bat) + I_Q_CONV + I_LEAK
 
 
-def life_months(i_bat, cap_mah=CAP_MAH, usable=USABLE, self_discharge=SELF_DISCHARGE):
+def life_months(i_bat, cap_mah=None, usable=None, self_discharge=None):
+    cap_mah = cap_mah or CAP_MAH
+    usable = usable or USABLE
+    self_discharge = SELF_DISCHARGE if self_discharge is None else self_discharge
     usable_ah = cap_mah / 1000 * usable
     # Self-discharge as an extra constant drain
     hours = usable_ah / (i_bat + cap_mah / 1000 * self_discharge / 8760)
@@ -186,12 +204,9 @@ def breakdown(mode, presses, controllers, q_poll=Q_POLL_0DBM):
     print(f"  charge per press {q_press * 1e3:.1f} mC at 3.3 V ({bat_from_load(q_press) * 1e3:.1f} mC from the cell)")
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--breakdown", action="store_true")
-    args = ap.parse_args()
-
+def report(breakdowns):
     usable = CAP_MAH * USABLE
+    print(f"=== {CELL} (board {CELLS[CELL][4]}) ===\n")
     print(f"Usable capacity {usable:.0f} mAh ({CAP_MAH:.0f} mAh x {USABLE:.2f}), converter factor "
           f"{V_DD / (ETA * V_BAT):.2f} (3.3 V / ({ETA} x {V_BAT} V)), poll {Q_POLL_0DBM * 1e3:.2f} mC at 0 dBm")
     floor = bat_from_load(I_SLEEP) + I_Q_CONV + I_LEAK
@@ -203,19 +218,32 @@ def main():
     print(table(2))
     print("\nFor comparison, ESP-IDF default TX power (+20 dBm, not used by this firmware), 1 controller:\n")
     print(table(1, Q_POLL_20DBM, "20 dBm"))
-    print(f"\nOne-off: commissioning ~{Q_COMMISSION / 3.6:.2f} mAh, one Thread re-attach ~{Q_REATTACH / 3.6 * 1000:.0f} uAh"
-          " (load side, assumptions)")
-    print("\nPer state (load side; battery column includes the converter factor):\n")
-    print(states_table())
-    print("\nOther power sources, 20 presses/day, 1 controller, same electronics:\n")
-    print(alternatives_table())
-    print("\nCR2032 if only the sleep floor changed (20 presses/day, 1 controller):\n")
+    print(f"\n{CELL} if only the sleep floor changed (20 presses/day, 1 controller):\n")
     print(floor_sensitivity())
-    if args.breakdown:
+    if breakdowns:
         breakdown("SIT 15 s", 20, 1)
         breakdown("SIT 15 s", 100, 2)
         breakdown("LIT 120 s", 20, 1)
         breakdown("LIT 120 s", 100, 1)
+    print()
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--breakdown", action="store_true")
+    ap.add_argument("--cell", choices=sorted(CELLS), help="one cell only (default: every cell)")
+    args = ap.parse_args()
+
+    for name in [args.cell] if args.cell else CELLS:
+        use_cell(name)
+        report(args.breakdown)
+    print(f"One-off: commissioning ~{Q_COMMISSION / 3.6:.2f} mAh, "
+          f"one Thread re-attach ~{Q_REATTACH / 3.6 * 1000:.0f} uAh (load side, assumptions)")
+    print("\nPer state (load side; battery column includes the converter factor of the CR2450):\n")
+    use_cell("CR2450")
+    print(states_table())
+    print("\nPower sources, 20 presses/day, 1 controller, same electronics:\n")
+    print(alternatives_table())
 
 
 if __name__ == "__main__":

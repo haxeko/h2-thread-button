@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 """Generate the KiCad project settings (.kicad_pro: design rules, net classes), the project library
-lib/matter_button.{kicad_sym,pretty} and the project library tables.
+lib/matter_button.{kicad_sym,pretty} and the project library tables of a board. Run from the board folder:
+  cd hardware/<board> && python3 ../scripts/gen_project.py
 
 - ESP32-H2-WROOM-02C symbol and footprint: not in the KiCad 9 library. Land pattern from the module datasheet
   v1.2, chapter 11.1 (18 x 20 mm, 28 castellated pads 1.5 x 0.9 mm, pitch 1.5 mm, thermal pad 29 in two parts).
 - VBAT: power symbol for the battery rail (KiCad has +BATT, not VBAT).
-- Keystone 3034: the stock footprint has two pads "1" (the two tabs of the same metal clip). KiCad 9 would ask for
-  a copper connection between them around the coin cell, so the copy here leaves the tab at x = +10.985
-  unnumbered (soldered, mechanical only). The holder sits on the bottom side: that tab is on the left in the top
-  view.
+- Battery holder copies (design.CUSTOM_FOOTPRINTS): a stock coin cell holder footprint has two pads "1" (the two
+  tabs of the same metal clip). KiCad 9 would ask for a copper connection between them around the cell, so the copy
+  leaves one tab unnumbered (soldered, mechanical only).
 """
 
 import json
 import os
 
+from kicad_sexp import HW, KICAD_FP, effects, num, q, stock_symbol, uid, write  # first: finds design.py
+
+import design
 from design import GROUND_NETS, LIB, POWER_NETS, PROJECT
-from kicad_sexp import HW, KICAD_FP, effects, num, q, stock_symbol, uid, write
 
 DATASHEET = "https://www.espressif.com/sites/default/files/documentation/esp32-h2-wroom-02c_datasheet_en.pdf"
 
@@ -76,7 +78,8 @@ def module_symbol():
 def vbat_symbol():
     """Power symbol for the battery rail after the reverse polarity MOSFET (net VBAT), drawn like +3V3."""
     s = stock_symbol("power:+3V3").replace('"+3V3', '"VBAT')
-    s = s.replace('(property "Description" "', '(property "Description" "Battery rail (CR2032 after Q1). ', 1)
+    desc = f'(property "Description" "Battery rail ({design.BATTERY} after Q1). '
+    s = s.replace('(property "Description" "', desc, 1)
     return "\t" + s.replace("\n", "\n\t") + "\n"
 
 
@@ -121,13 +124,16 @@ def via_pad(name, number, x, y, d=0.6, drill=0.3):
             f"(uuid {q(uid(name, 'via', number, x, y))}))\n")
 
 
+MODULE_DESCR = ("ESP32-H2-WROOM-02C module, 18 x 20 mm, land pattern of the datasheet v1.2 chapter 11.1. "
+                "Antenna area (y -10 .. -4): no copper on any layer, best outside the board edge. " + DATASHEET)
+
+
 def module_footprint():
     """Origin = module centre. Antenna end at y = -10 (antenna area y -10 .. -4), pads 10-19 at y = +9.75."""
     n = "ESP32-H2-WROOM-02C"
     o = [f"(footprint {q(n)}\n\t(version 20241229)\n\t(generator \"pcbnew\")\n\t(generator_version \"9.0\")\n"
          "\t(layer \"F.Cu\")\n"
-         f"\t(descr {q('ESP32-H2-WROOM-02C module, 18 x 20 mm, land pattern of the datasheet v1.2 chapter 11.1. '
-                       'Antenna area (y -10 .. -4): no copper on any layer, best outside the board edge. ' + DATASHEET)})\n"
+         f"\t(descr {q(MODULE_DESCR)})\n"
          "\t(tags \"ESP32-H2 Espressif Thread Zigbee Matter BLE module\")\n",
          fp_prop(n, "Reference", "REF**", 0, 11.9, "F.SilkS"),
          fp_prop(n, "Value", n, 0, 1.0, "F.Fab"),
@@ -179,22 +185,80 @@ def module_footprint():
     return "".join(o)
 
 
-def battery_holder_footprint():
-    with open(os.path.join(KICAD_FP, "Battery.pretty", "BatteryHolder_Keystone_3034_1x20mm.kicad_mod")) as f:
-        s = f.read()
-    s = s.replace('(footprint "BatteryHolder_Keystone_3034_1x20mm"', '(footprint "BatteryHolder_Keystone_3034_CR2032"')
-    s = s.replace('(descr "', '(descr "Copy of Battery:BatteryHolder_Keystone_3034_1x20mm with the tab at x = +10.985 '
-                  'unnumbered (same metal clip as pad 1, soldered for strength only). ', 1)
-    old = '(pad "1" smd rect\n\t\t(at 10.985 0)'
-    assert old in s, "stock Keystone 3034 footprint changed"
-    s = s.replace(old, '(pad "" smd rect\n\t\t(at 10.985 0)')
+def holder_footprint(f):
+    """Copy of a stock footprint (f["stock"], "Lib:Name") renamed f["name"], the pad "1" at f["unnumber"] (x, y)
+    left unnumbered."""
+    lib, name = f["stock"].split(":")
+    with open(os.path.join(KICAD_FP, lib + ".pretty", name + ".kicad_mod")) as fh:
+        s = fh.read()
+    s = s.replace(f'(footprint "{name}"', f'(footprint "{f["name"]}"', 1)
+    if f.get("unnumber"):
+        x, y = f["unnumber"]
+        s = s.replace('(descr "', f'(descr "Copy of {f["stock"]} with the tab at ({num(x)}, {num(y)}) unnumbered '
+                      '(same metal clip as pad 1, soldered for strength only). ', 1)
+        old = f'(pad "1" smd rect\n\t\t(at {num(x)} {num(y)})'
+        assert old in s, f"stock footprint {f['stock']} changed"
+        s = s.replace(old, f'(pad "" smd rect\n\t\t(at {num(x)} {num(y)})')
+    for text in f.get("drop_silk_text", []):  # e.g. a polarity mark that would land outside the board
+        s = s.replace('(descr "', f'(descr "Copy of {f["stock"]} without the silkscreen text {text}. ', 1)
+        s = remove_blocks(s, lambda item: item.startswith(f'(fp_text user "{text}"') and '"F.SilkS"' in item,
+                          ("fp_text",))
+    if f.get("courtyard"):  # replace a courtyard KiCad 9 reports as malformed by one closed polygon
+        s = remove_layer_graphics(s, "F.CrtYd")
+        pts = " ".join(f"(xy {num(px)} {num(py)})" for px, py in f["courtyard"])
+        poly = (f'\t(fp_poly (pts {pts}) (stroke (width 0.05) (type solid)) (fill no) (layer "F.CrtYd") '
+                f'(uuid {q(uid(f["name"], "courtyard"))}))\n')
+        i = s.index("\t(pad ")
+        s = s[:i] + poly + s[i:]
     return s
+
+
+def remove_layer_graphics(text, layer):
+    """Remove the graphic items (fp_line, fp_arc, fp_circle, fp_rect, fp_poly) drawn on `layer`."""
+    return remove_blocks(text, lambda item: f'(layer "{layer}")' in item,
+                         ("fp_line", "fp_arc", "fp_circle", "fp_rect", "fp_poly"))
+
+
+def _find_head(text, head, i):
+    """Index of the next '(head' followed by white space (a block of that type) from i, -1 if none."""
+    while True:
+        k = text.find("(" + head, i)
+        if k < 0 or text[k + 1 + len(head)].isspace():
+            return k
+        i = k + 1
+
+
+def remove_blocks(text, match, heads):
+    """Remove the balanced '(head ...' blocks for which match(block) is true, with their indentation and newline."""
+    out, i = [], 0
+    while True:
+        j = min((k for k in (_find_head(text, h, i) for h in heads) if k >= 0), default=-1)
+        if j < 0:
+            out.append(text[i:])
+            return "".join(out)
+        depth = 0
+        for e in range(j, len(text)):
+            depth += text[e] == "("
+            depth -= text[e] == ")"
+            if depth == 0:
+                break
+        line = text.rfind("\n", i, j)
+        start = line + 1 if line >= 0 and not text[line + 1:j].strip() else j  # the indentation goes too
+        if match(text[j:e + 1]):
+            out.append(text[i:start])
+            i = e + 1
+            if text[i:i + 1] == "\n":
+                i += 1
+        else:
+            out.append(text[i:e + 1])
+            i = e + 1
 
 
 def write_footprints():
     d = os.path.join(HW, "lib", LIB + ".pretty")
     write(os.path.join(d, "ESP32-H2-WROOM-02C.kicad_mod"), module_footprint())
-    write(os.path.join(d, "BatteryHolder_Keystone_3034_CR2032.kicad_mod"), battery_holder_footprint())
+    for f in getattr(design, "CUSTOM_FOOTPRINTS", []):
+        write(os.path.join(d, f["name"] + ".kicad_mod"), holder_footprint(f))
 
 
 def write_tables():

@@ -1,0 +1,7 @@
+# Board hardware/module-cr123a: one CR123A (1500 mAh) instead of the CR2450 of hardware/module-cr2450, same circuit.
+# Sets the Power Source BatIECDesignation (CR17345), the capacity, the replacement description and the hardware
+# version string. Add it after sdkconfig.defaults and the feature variants, e.g.
+#   idf.py -B build-cr123a -D IDF_TARGET=esp32h2 -D SDKCONFIG=sdkconfig.cr123a \
+#     -D SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.cr123a" build
+#   LIT:  SDKCONFIG_DEFAULTS="sdkconfig.defaults;sdkconfig.defaults.lit;sdkconfig.defaults.cr123a"
+CONFIG_BATTERY_CR123A=y

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""Check (ERC, DRC with schematic parity) and export the manufacturing files with kicad-cli.
+"""Check (ERC, DRC with schematic parity) and export the manufacturing files of a board with kicad-cli. Run from the
+board folder: cd hardware/<board> && python3 ../scripts/gen_fab.py
 
-  fab/matter-button-cr2032-gerber.zip   Gerber (Protel names, no X2/netlist attributes, as the JLCPCB KiCad guide)
+  fab/<project>-gerber.zip              Gerber (Protel names, no X2/netlist attributes, as the JLCPCB KiCad guide)
                                         + Excellon drill (mm) + drill map
   fab/bom.csv                           grouped bill of materials (MPN, LCSC), not fitted parts marked DNP
   fab/bom-jlcpcb.csv                    JLCPCB assembly BOM: Comment, Designator, Footprint, LCSC Part #, MPN
   fab/cpl-jlcpcb.csv                    JLCPCB pick and place: Designator, Mid X, Mid Y, Layer, Rotation
                                         (both without the hand soldered parts, no LCSC part number: U1, BT1)
+  fab/bom-vi.csv                        not generated: Vietnamese BOM with search keywords, kept by hand
   docs/schematic.pdf                    KiCad schematic
   docs/assembly-top.svg, -bottom.svg    assembly drawings (fab layers: outlines, designators, values)
   docs/pcb-top.png, docs/pcb-bottom.png 3D renders (no component models: pads, mask, silk)
@@ -24,8 +26,9 @@ import subprocess
 import sys
 import zipfile
 
+from kicad_sexp import HW  # first: finds design.py
+
 import design
-from kicad_sexp import HW
 
 PCB = os.path.join(HW, design.PROJECT + ".kicad_pcb")
 SCH = os.path.join(HW, design.PROJECT + ".kicad_sch")
@@ -85,10 +88,9 @@ def bom():
 
 
 # Package names for the JLCPCB BOM (their parts matching reads Comment + Footprint)
-PACKAGE = [("R_0402", "0402"), ("C_0402", "0402"), ("C_0603", "0603"), ("C_1210", "1210"), ("LED_0603", "0603"),
-           ("L_1008", "1008"), ("SOT-23", "SOT-23"), ("WSON-10", "WSON-10 2.5x2.5mm"),
-           ("PTS810", "SMD 4.2x3.2mm tact switch"), ("WROOM-02C", "ESP32-H2-WROOM-02C module"),
-           ("Keystone_3034", "CR2032 holder SMD")]
+PACKAGE = [("R_0402", "0402"), ("C_0402", "0402"), ("C_0603", "0603"), ("C_1206", "1206"), ("C_1210", "1210"),
+           ("LED_0603", "0603"), ("L_1008", "1008"), ("SOT-23", "SOT-23"), ("WSON-10", "WSON-10 2.5x2.5mm"),
+           ("PTS810", "SMD 4.2x3.2mm tact switch"), ("WROOM-02C", "ESP32-H2-WROOM-02C module")]
 
 
 # Fitted parts LCSC does not stock (no LCSC part number): left out of the JLCPCB BOM and CPL, soldered by hand
@@ -108,7 +110,7 @@ def bom_jlcpcb():
         for row in csv.DictReader(f):
             if not row["LCSC"]:
                 continue
-            fp = next(name for key, name in PACKAGE if key in row["Footprint"])
+            fp = next((name for key, name in PACKAGE if key in row["Footprint"]), row["Footprint"].split(":")[-1])
             w.writerow([row["Comment"], row["Designator"], fp, row["LCSC"], row["MPN"]])
     print("bom jlcpcb:", path, "(hand soldered:", ", ".join(HAND_SOLDERED) + ")")
 

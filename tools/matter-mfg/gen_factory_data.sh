@@ -7,7 +7,7 @@
 #   gen_factory_data.sh -t occupancy|plug|switch|contact -n COUNT [--private]
 #     -t occupancy  ESP32-H2 presence sensors (device type 0x0107)
 #     -t plug       ESP32-H2 relay / plug (device type 0x010A)
-#     -t switch     ESP32-H2 CR2032 button, matter-button-cr2032 (Generic Switch, device type 0x000F)
+#     -t switch     ESP32-H2 battery button, h2-thread-button (Generic Switch, device type 0x000F)
 #     -t contact    ESP32-H2 door sensor, matter-door-sensor (Contact Sensor, device type 0x0015)
 #     --private     sign the DACs with pki/private/PAI (gen_pki.sh --private) instead of the SDK test PAI
 #
