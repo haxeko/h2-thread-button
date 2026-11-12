@@ -6,7 +6,7 @@ Mỗi bo một thư mục, đặt tên `<mạch MCU>-<loại pin>[-<biến thể
 |---|---|---|---|---|---|---|
 | [`module-cr2450/`](module-cr2450/README.md) | CR2450 (620 mAh), đế Keystone 3008 dán ở mặt dưới | 37,4 × 30,5 mm (37,4 × 36,5 mm) | 2 × 220 µF gốm | ~11 / ~15 tháng | mặc định (`sdkconfig.defaults`) | ERC/DRC sạch, chưa đặt mạch |
 | [`module-cr123a/`](module-cr123a/README.md) | CR123A (1500 mAh), đế Bulgin BX0123 xuyên lỗ ở mặt dưới | 42,4 × 27,5 mm (42,4 × 33,5 mm) | 1 × 100 µF gốm | ~30 / ~41 tháng | `sdkconfig.defaults.cr123a` | ERC/DRC sạch, chưa đặt mạch |
-| [`module-cr123a-mini/`](module-cr123a-mini/README.md) | CR123A (1500 mAh) **trong vỏ, sau bo**; tiếp điểm của vỏ nối dây vào pad BAT+ / BAT− | **34,5 × 14,8 mm** (34,5 × 20,8 mm): dài đúng một viên CR123A | 1 × 22 µF gốm | ~30 / ~41 tháng | `sdkconfig.defaults.cr123a_mini` (LED GPIO11, đo pin GPIO4) | ERC/DRC sạch, chưa đặt mạch; mọi đường vẽ tay, lắp ráp một mặt |
+| [`module-cr123a-mini/`](module-cr123a-mini/README.md) | CR123A (1500 mAh) **trong vỏ, dọc cạnh dưới bo**; tiếp điểm của vỏ nối dây vào pad BAT+ / BAT− ở mép dưới; nút và LED ở mép trên (phía anten) | **34,5 × 14,8 mm** (34,5 × 20,8 mm): dài đúng một viên CR123A | 1 × 22 µF gốm | ~30 / ~41 tháng | `sdkconfig.defaults.cr123a_mini` (LED GPIO11, đo pin GPIO4) | ERC/DRC sạch, chưa đặt mạch; mọi đường vẽ tay, lắp ráp một mặt |
 
 Bo CR2032 (29,8 × 23,9 mm, Keystone 3034) và bo chip ESP32-H2 không dùng module (`hardware-chip/`) đã bỏ: xem lịch sử git, commit `dad9ded` là bản cuối có cả hai.
 

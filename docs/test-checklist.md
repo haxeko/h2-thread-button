@@ -224,11 +224,11 @@ Bản phát hành, 2 controller (Apple + HA), ~20 lần nhấn/ngày (bằng tay
 
 | # | Bước | Đạt khi | Kết quả |
 |---|---|---|---|
-| P1 | Hàn dây từ tiếp điểm của vỏ: + vào pad BAT+ (đầu trái mặt dưới), − vào pad BAT− (đầu phải); lắp pin đúng chiều | khởi động, log `battery` có áp pin | |
+| P1 | Hàn dây từ tiếp điểm của vỏ: + vào pad BAT+ (mép dưới, đầu trái, mặt dưới), − vào pad BAT− (mép dưới, đầu phải); lắp pin đúng chiều | khởi động, log `battery` có áp pin | |
 | P2 | Lắp ngược pin 10 s | không chạy, Q1 và pin không ấm, dòng ≤ 1 µA | |
 | P3 | Log khởi động / Basic Information | `HardwareVersionString` "ESP32-H2-WROOM-02C CR123A mini v1.0"; LED (GPIO11) nháy khi mở cửa sổ ghép nối | |
 | P4 | Áp pin báo (`BatVoltage`) so với đồng hồ đo ở C1, pin nghỉ | lệch ≤ 30 mV (đo pin qua GPIO4 / ADC1_CH3) | |
 | P5 | Dòng Deep-sleep (chưa ghép nối, hết cửa sổ ghép nối) ở dây BAT+ | như bo khác ± 3 µA (nếu cao hơn: điện trở kéo mặc định của GPIO4 qua R9 hoặc của GPIO11 qua LED) | |
 | P6 | Dòng Light-sleep đã ghép nối, LED tắt | như bo khác (mục F) | |
-| P7 | Lót cách điện giữa bo và pin; đóng vỏ | không chạm pad hở, nút bấm được | |
+| P7 | Lót cách điện nếu pin áp vào mặt dưới bo; đóng vỏ | không chạm pad hở; nút (SW1, mép trên) bấm được qua vỏ, thấy LED | |
 | P8 | RSSI/LQI của parent khi đã đóng vỏ, pin ở vị trí cuối cùng | không kém bo `module-cr123a` quá 3 dB | |

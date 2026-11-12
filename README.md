@@ -8,7 +8,7 @@ Ba bản phần cứng, cùng mạch và cùng mã firmware, khác nhau ở pin,
 |---|---|---|---|---|
 | [`hardware/module-cr2450`](hardware/module-cr2450/README.md) | **CR2450** 620 mAh, đế Keystone 3008 | 37,4 × 36,5 mm | ~11 / ~15 tháng | mặc định |
 | [`hardware/module-cr123a`](hardware/module-cr123a/README.md) | **CR123A** 1500 mAh, đế Bulgin BX0123 | 42,4 × 33,5 mm | ~30 / ~41 tháng | `sdkconfig.defaults.cr123a` |
-| [`hardware/module-cr123a-mini`](hardware/module-cr123a-mini/README.md) | **CR123A** 1500 mAh trong vỏ, sau bo (tiếp điểm của vỏ nối dây vào pad BAT+/BAT−) | **34,5 × 20,8 mm**: dài đúng một viên CR123A | ~30 / ~41 tháng | `sdkconfig.defaults.cr123a_mini` |
+| [`hardware/module-cr123a-mini`](hardware/module-cr123a-mini/README.md) | **CR123A** 1500 mAh trong vỏ, dọc cạnh dưới bo (tiếp điểm của vỏ nối dây vào pad BAT+/BAT− ở mép dưới; nút ở mép trên) | **34,5 × 20,8 mm**: dài đúng một viên CR123A | ~30 / ~41 tháng | `sdkconfig.defaults.cr123a_mini` |
 
 Firmware ([`firmware/`](firmware)): ESP-IDF v6.0.2 + esp-matter release/v1.6.1. Các biến thể: mặc định (bo CR2450, ICD SIT), `lit`, `cr123a`, `cr123a_mini`, `unique_setup`, `factory`, `pmdiag`, `debug`. Host test chạy được không cần ESP-IDF: máy trạng thái nút (17 kịch bản), gửi lại cử chỉ, cách báo % pin. **Chưa đo trên bo thật**: mọi số đo đánh dấu [AS] phải được thay bằng số đo theo [checklist](docs/test-checklist.md).
 
@@ -288,16 +288,16 @@ PCB thiết kế bằng KiCad 9, mỗi bo một thư mục trong **[`hardware/`]
 
 - PCB 2 lớp FR-4 1,6 mm, không có lỗ bắt vít. Module ở mép trên, sát mép phải, **vùng anten (6 mm đầu module) chìa ra ngoài mép bo**; không đồng, không đường mạch, không linh kiện dưới vùng anten (datasheet WROOM-02C, mục 11; ESP32-H2 Hardware Design Guidelines, *Positioning a Module on a Base Board*). Mặt phẳng GND hai lớp chạy tới sát mép bo ở chân anten.
 - Đế pin ở mặt dưới, mọi linh kiện khác ở mặt trên (lắp ráp một mặt), 10 pad nạp/debug Ø1,5 mm ở mặt dưới ngoài thân đế pin (jig pogo-pin).
-- TPS63900: C3 (VIN) và C4 (VOUT) sát chân trên lớp trên, L1 ngay dưới LX1/LX2, điện trở CFG sát chân; pad tản nhiệt nối chân GND 8 và hai via. Cùng bố trí và đường mạch trên mọi bo (bo mini xoay cụm này 180°).
+- TPS63900: C3 (VIN) và C4 (VOUT) sát chân trên lớp trên, L1 ngay dưới LX1/LX2, điện trở CFG sát chân; pad tản nhiệt nối chân GND 8 và hai via. Cùng bố trí và đường mạch trên mọi bo; bo mini xoay cụm này 90° theo chiều kim đồng hồ và đặt C3/C4 sát U2 hơn (nối thẳng vào pad tản nhiệt, không có via ở giữa).
 - C6, R4, C7, C8, R7, R6, R5 bên trái module cạnh chân của chúng; đường nút đi trong lề trái của module xuống SW1. D1 cạnh chân 15 (GPIO22).
 - Phủ đồng GND cả hai lớp, via khâu.
 
 | | `module-cr2450` | `module-cr123a` | `module-cr123a-mini` |
 |---|---|---|---|
 | Bo / cả cụm có anten | 37,4 × 30,5 / 37,4 × 36,5 mm | 42,4 × 27,5 / 42,4 × 33,5 mm | 34,5 × 14,8 / 34,5 × 20,8 mm |
-| Pin so với anten | pin Ø24,5 (vỏ kim loại) dưới module và mạch; mép pin cách chân anten **4,75 mm** | pin Ø17 trong đế nhựa, trục cách chân anten 16,5 mm, thân pin cách **8 mm** | pin Ø17 trong vỏ, sau bo; giữ mép trên pin không vượt mép trên bo (chân anten) |
-| Mặt dưới | pad tiếp xúc âm Ø20 mm (GND); vành 10,05–12,6 mm quanh tâm pin không có đồng (mép vỏ pin là cực +); hai tai đế pin chặn hết bề ngang, mọi đường giữa nửa trên và nửa dưới đi ở mặt trên | thân đế nhựa, đi dây bên dưới được; hàng 4 lỗ (2 chân + 2 chốt Ø3,2 mm) ở y = 16,5 mm, ngay dưới module | chỉ đồng: pad BAT+ (đầu trái), BAT− (đầu phải), 8 pad test; lót cách điện giữa bo và pin |
-| Đi dây | toàn bộ vẽ tay trong `design.py` (bố trí mặt trên lấy từ bo CR2032 cũ, đã kiểm chứng) | phần lớn vẽ tay, phần còn lại FreeRouting | toàn bộ vẽ tay; cụm TPS63900 như các bo khác, xoay 180° |
+| Pin so với anten | pin Ø24,5 (vỏ kim loại) dưới module và mạch; mép pin cách chân anten **4,75 mm** | pin Ø17 trong đế nhựa, trục cách chân anten 16,5 mm, thân pin cách **8 mm** | pin Ø17 trong vỏ, dọc cạnh dưới bo, xa anten nhất; pad nối dây ở mép dưới |
+| Mặt dưới | pad tiếp xúc âm Ø20 mm (GND); vành 10,05–12,6 mm quanh tâm pin không có đồng (mép vỏ pin là cực +); hai tai đế pin chặn hết bề ngang, mọi đường giữa nửa trên và nửa dưới đi ở mặt trên | thân đế nhựa, đi dây bên dưới được; hàng 4 lỗ (2 chân + 2 chốt Ø3,2 mm) ở y = 16,5 mm, ngay dưới module | chỉ đồng: pad BAT+ và BAT− dọc mép dưới (đầu trái, đầu phải), 8 pad test; lót cách điện nếu pin áp vào mặt dưới |
+| Đi dây | toàn bộ vẽ tay trong `design.py` (bố trí mặt trên lấy từ bo CR2032 cũ, đã kiểm chứng) | phần lớn vẽ tay, phần còn lại FreeRouting | toàn bộ vẽ tay; nút SW1 và LED ở mép trên (phía anten), góc trái; cụm TPS63900 như các bo khác, xoay 90° |
 
 Pin nằm sau mặt phẳng GND, không nằm dưới anten, nhưng Espressif khuyến nghị khoảng trống ~15 mm quanh anten: đo RSSI/LQI của parent khi đã lắp vỏ (checklist mục C), nhất là với bo CR2450.
 
@@ -1070,7 +1070,7 @@ py tools\battery_model.py --breakdown
 | 20 | Tụ bulk lớn tạo dòng xung khi lắp pin | tia lửa nhỏ ở tiếp điểm | pin cúc áo giới hạn dòng qua R_trong (~0,3 A, vài ms); CR123A chỉ có 100 µF; chấp nhận được | checklist B |
 | 21 | Lắp pin sạc RCR123A / 16340 (Li-ion 3,7–4,2 V) vào bo CR123A | mạch vẫn chạy (TPS63900 tới 5,5 V) nhưng VBAT_SENSE vượt dải ADC, % và mức pin sai | dùng pin Li-MnO2 3 V; ghi trên vỏ; muốn dùng pin sạc thì thêm cầu chia (R9/R10) và chỉnh `BATTERY_SENSE_RATIO_X1000` cùng các ngưỡng | — |
 | 22 | Nạp nhầm firmware giữa các bo | loại pin, dung lượng, % pin báo sai (nút vẫn chạy); với bo mini: LED tắt, đo pin sai chân | mỗi bo một bản (`cr123a`, `cr123a_mini`); kiểm tra `HardwareVersionString` trong app | checklist A, P |
-| 23 | Bo mini: pin nằm sát sau bo, vỏ thép pin là cực − | chạm pad hở ở mặt dưới (chập), anten lệch tần nếu pin trồi lên phía anten | lót cách điện giữa bo và pin; giữ mép trên pin dưới mép trên bo; đo RSSI khi đã đóng vỏ | checklist C, P |
+| 23 | Bo mini: pin nằm trong vỏ dọc cạnh dưới bo, vỏ thép pin là cực − | chạm pad hở ở mặt dưới nếu pin áp vào bo (chập), anten lệch tần nếu pin hay dây pin trồi lên phía anten | lót cách điện nếu pin áp vào mặt dưới bo; giữ pin và dây pin ở phía mép dưới; đo RSSI khi đã đóng vỏ | checklist C, P |
 | 24 | Bo mini: GPIO4 (đo pin) là chân JTAG, có thể có điện trở kéo mặc định lúc khởi động / Deep-sleep | vài µA qua R9 lúc Deep-sleep; số đo lúc khởi động lệch | driver ADC đặt chân analog khi đo; đo dòng Deep-sleep và so áp đo được với đồng hồ | checklist P |
 
 ---

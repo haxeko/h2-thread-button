@@ -1,6 +1,6 @@
 # Bo module-cr123a-mini: nút nhấn Matter dài đúng một viên CR123A
 
-Bản gọn của [`module-cr123a`](../module-cr123a/README.md): bo **dài 34,5 mm, bằng chiều dài pin CR123A**, cao 14,8 mm. Anten module chìa ra 6 mm ở mép trên, **cả cụm 34,5 × 20,8 mm**. Pin **không nằm trên bo**: pin đặt sau bo, trong ngăn pin của vỏ; hai tiếp điểm của vỏ nối dây vào hai pad **BAT+ / BAT−** ở hai đầu mặt dưới bo.
+Bản gọn của [`module-cr123a`](../module-cr123a/README.md): bo **dài 34,5 mm, bằng chiều dài pin CR123A**, cao 14,8 mm. Anten module chìa ra 6 mm ở mép trên, **cả cụm 34,5 × 20,8 mm**. **Nút nhấn SW1 và LED ở mép trên (phía anten)**, góc trái, xa anten nhất. Pin **không nằm trên bo**: pin nằm trong ngăn pin của vỏ, **dọc cạnh dưới bo** (cạnh không có anten); hai tiếp điểm của vỏ nối dây vào hai pad **BAT+ / BAT−** ở hai đầu mép dưới, mặt dưới bo.
 
 Mọi file được sinh bằng các script dùng chung trong [`../scripts`](../README.md) từ [`design.py`](design.py), rồi kiểm tra bằng KiCad 9.0.9:
 
@@ -23,7 +23,8 @@ Chưa đặt mạch, chưa đo trên bo thật. Firmware: **`sdkconfig.defaults.
 | | `module-cr123a` | `module-cr123a-mini` |
 |---|---|---|
 | Bo / cả cụm có anten | 42,4 × 27,5 / 42,4 × 33,5 mm | **34,5 × 14,8 / 34,5 × 20,8 mm** |
-| Pin | trong đế Bulgin BX0123 ở mặt dưới bo | trong vỏ, sau bo; tiếp điểm của vỏ nối dây vào pad BAT+ / BAT− |
+| Pin | trong đế Bulgin BX0123 ở mặt dưới bo | trong vỏ, dọc cạnh dưới bo; tiếp điểm của vỏ nối dây vào pad BAT+ / BAT− ở mép dưới |
+| Nút SW1, LED | SW1 ở dải dưới, giữa; LED dưới module, cạnh chân 15 | **mép trên (phía anten), góc trái**; LED ngay bên phải nút |
 | Lắp ráp | linh kiện mặt trên, đế pin mặt dưới | **chỉ mặt trên**; mặt dưới chỉ có đồng: 2 pad pin, 8 pad test |
 | LED / đo pin | GPIO22 (chân 15) / GPIO1 (chân 27, ADC1_CH0) | **GPIO11 (chân 6) / GPIO4 (chân 3, ADC1_CH3)** |
 | Đo dòng | cầu hàn JP1 (pin), JP2 (3,3 V) | **mắc ampe kế nối tiếp dây BAT+**; không có JP1, JP2 |
@@ -59,36 +60,37 @@ GPIO4 là chân JTAG MTCK. Lúc chạy, driver ADC đặt chân ở chế độ 
 | Cách mép bo | đồng ≥ 0,3 mm |
 | Bề mặt | ENIG khuyến nghị (WSON bước 0,5 mm, pad hàn dây) |
 | Linh kiện | **mặt trên tất cả** (lắp ráp một mặt) |
-| Mặt dưới | pad BAT+ 1,8 × 4,8 mm (đầu trái), pad BAT− 2,8 × 1,6 mm (đầu phải, nằm trong vùng phủ GND), 8 pad test Ø1,5 mm dưới module, phủ đồng GND |
+| Mặt dưới | pad BAT+ 3,6 × 1,6 mm và pad BAT− 2,8 × 1,6 mm dọc mép dưới, ở hai đầu (BAT− nằm trong vùng phủ GND), 8 pad test Ø1,5 mm dưới module, phủ đồng GND |
 
 ## 4. Bố trí
 
 | Vùng (nhìn từ mặt trên) | Linh kiện |
 |---|---|
-| Góc trên trái | TPS63900: L1 phía trên, C3 (VIN) bên trái, C4 (3V3) bên phải, R1–R3 phía dưới; cùng đường mạch như các bo khác, xoay 180°. C5 bên phải, rồi trục 3V3 theo mép trên tới chân 1 |
-| Cạnh trái module | mỗi chân một hàng: C6 (chân 1), R4 (chân 2), R9 + C9 (chân 3), R7 + C8 + R6 (chân 5), R8 (chân 6), R5 (chân 7); nhánh 3V3 dọc ở x = 10,3 mm |
-| Dải dưới, trái | Q1 + C1: đầu vào pin, ngay trên pad BAT+ (mặt dưới) và cạnh đầu vào TPS63900 |
-| Dải dưới, giữa | SW1, LED D1 bên phải nút |
-| Mặt dưới | BAT+ ở đầu trái, BAT− ở đầu phải; pad test dưới module; BTN_SW, LED_A, VBAT và các đường tới pad test đi ở mặt dưới |
+| Mép trên, góc trái (phía anten) | SW1, LED D1 ngay bên phải nút; thân nút cách mép trái module (và anten) hơn 10 mm. Đường nút chạy dọc mép trên, qua phía trên D1, xuống ở x = 10,2 mm tới R7; đường LED xuống ở x = 9,6 mm tới R8 |
+| Giữa, bên trái | TPS63900: L1 sát mép trái, C4 (3V3) phía trên, C3 (VIN) phía dưới, R1–R3 bên phải; cùng mạch như các bo khác, xoay 90° theo chiều kim đồng hồ, C3 và C4 sát U2 hơn. C5 (3V3) giữa nút và L1 |
+| Mép dưới, bên trái | Q1 + C1: đầu vào pin, cực D của Q1 ngay trên pad BAT+ (mặt dưới); đường VBAT dọc y = 10,6 mm nối Q1, C3, C1, chân SEL/EN của U2 |
+| Cạnh trái module | mỗi chân một hàng: C6 (chân 1), R4 (chân 2), R9 + C9 (chân 3), R7 + C8 (chân 5), R8 (chân 6), R5 (chân 7); R6 (kéo lên nút) ở trên cùng, giữa đường nút và trục 3V3 theo mép trên tới chân 1 |
+| Mặt dưới | BAT+ và BAT− dọc mép dưới, ở hai đầu; pad test dưới module; 3V3 từ bộ nguồn sang góc module (rồi tới TP1 và xuống R5) và VBAT tới R9 đi ở mặt dưới |
 
 Tọa độ (mm, gốc ở góc trên trái, nhìn từ mặt trên; nhìn từ mặt dưới thì trái/phải đảo lại):
 
 | Vật | Tọa độ |
 |---|---|
-| Tâm nút SW1 (thân 4,2 × 3,2 mm) | (9,6; 12,6) |
-| Tâm LED D1 | (13,6; 12,75) |
-| Pad BAT+ (mặt dưới) | tâm (1,3; 7,0), 1,8 × 4,8 mm |
-| Pad BAT− (mặt dưới) | tâm (32,5; 13,4), 2,8 × 1,6 mm |
+| Tâm nút SW1 (thân 4,2 × 3,2 mm) | (2,95; 1,95): thân cách mép trên 0,35 mm, cách mép trái 0,85 mm |
+| Tâm LED D1 | (7,35; 1,55) |
+| Pad BAT+ (mặt dưới) | tâm (2,4; 13,4), 3,6 × 1,6 mm |
+| Pad BAT− (mặt dưới) | tâm (32,5; 13,4), 2,8 × 1,6 mm (cách BAT+ 30,1 mm) |
 | Pad test, hàng trên (y = 9,6) | x = 19,5 EN · 22,0 3V3 · 27,0 USB D+ · 29,5 USB D− |
 | Pad test, hàng dưới (y = 12,2) | x = 19,5 BOOT · 22,0 GND · 27,0 TXD0 · 29,5 RXD0 |
 | Module | thân x = 15,7 … 33,7, y = −6 … 14; mép anten y = −6, chân anten y = 0 (mép bo) |
 
 ## 5. Lắp vào vỏ
 
-- **Pin nằm sau bo** (phía mặt dưới), trục pin song song cạnh dài của bo. Ngăn pin và hai tiếp điểm (lò xo cho cực −, tấm phẳng cho cực +) thuộc vỏ. Hàn dây từ tiếp điểm + vào **pad BAT+ (đầu trái)**, từ tiếp điểm − vào **pad BAT− (đầu phải)**: hai pad nằm đúng hai đầu pin, dây ngắn.
-- **Lót cách điện** (Kapton, tấm nhựa 0,1–0,2 mm) giữa mặt dưới bo và pin: vỏ thép của CR123A là cực −, mặt dưới bo có pad test và pad pin để hở đồng.
+- **Pin nằm dọc cạnh dưới bo** (cạnh không có anten), trục pin song song cạnh dài: sau nửa dưới của bo hoặc ngay dưới mép dưới, tùy vỏ. Ngăn pin và hai tiếp điểm (lò xo cho cực −, tấm phẳng cho cực +) thuộc vỏ. Hàn dây từ tiếp điểm + vào **pad BAT+ (mép dưới, đầu trái)**, từ tiếp điểm − vào **pad BAT− (mép dưới, đầu phải)**: hai pad ở ngay hai đầu pin, dây ngắn.
+- **Nút**: SW1 nhấn từ mặt trên, ở góc trên trái (mép phía anten); nút bấm của vỏ đặt ngay trên SW1 (thân 4,2 × 3,2 mm, cao 2,5 mm), LED D1 ngay bên phải.
+- **Lót cách điện** (Kapton, tấm nhựa 0,1–0,2 mm) nếu pin áp vào mặt dưới bo: vỏ thép của CR123A là cực −, mặt dưới bo có pad test và pad pin để hở đồng.
 - **Lắp ngược pin** vẫn an toàn nhờ Q1. Nên làm vỏ chỉ cho pin lắp một chiều (cực + lõm vào), đỡ phải tháo ra lắp lại.
-- **Anten**: giữ pin ở phía dưới, sao cho mép trên của pin không vượt quá mép trên của bo, vì vỏ pin là kim loại. Không đặt kim loại trong ~15 mm quanh anten. Đo RSSI/LQI của parent khi đã đóng vỏ (checklist mục C).
+- **Anten**: pin (vỏ kim loại) và dây pin ở phía mép dưới, xa mép trên; không để pin hay dây trồi lên phía anten. Không đặt kim loại trong ~15 mm quanh anten. Đo RSSI/LQI của parent khi đã đóng vỏ (checklist mục C).
 - **Đo dòng**: tháo dây BAT+ khỏi pad và mắc ampe kế (PPK2, Joulescope) vào giữa (checklist mục F). Không có JP1/JP2 như các bo khác.
 - **Nạp firmware**: dùng pogo-pin vào các pad test ở mặt dưới **trước khi lắp vào vỏ**, cấp nguồn bằng pin hoặc nguồn 3,0 V vào BAT+/BAT−.
 
